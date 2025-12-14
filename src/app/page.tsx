@@ -64,7 +64,7 @@ export default function Home() {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-white">AI Diagnostic Dashboard</h1>
+          <h1 className="text-3xl font-bold text-white">AI Lab Report Diagnostic Dashboard</h1>
           <div className="flex gap-4">
             <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
               Profile
