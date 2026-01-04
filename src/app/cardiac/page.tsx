@@ -692,7 +692,7 @@ export default function CardiacPage() {
           <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
             <h2 className="text-xl font-bold text-white mb-4">Test Results</h2>
             <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4">
-              <pre className="text-gray-300 whitespace-pre-wrap break-words">
+              <pre className="text-white whitespace-pre-wrap break-words">
                 {typeof result === 'object' ? JSON.stringify(result, null, 2) : result}
               </pre>
             </div>

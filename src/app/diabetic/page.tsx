@@ -165,7 +165,7 @@ export default function DiabeticPage() {
                 name="Age"
                 value={formData.Age}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.Age ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.Age ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter age"
               />
               {errors.Age && <p className="mt-1 text-sm text-red-400">{errors.Age}</p>}
@@ -180,7 +180,7 @@ export default function DiabeticPage() {
                 name="Gender"
                 value={formData.Gender}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.Gender ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.Gender ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select gender</option>
                 <option value="M">Male (M)</option>
@@ -190,7 +190,7 @@ export default function DiabeticPage() {
             </div>
             
             <div>
-              <label htmlFor="BMI" className="block text-sm font-medium text-gray-300 mb-1">
+              <label htmlFor="BMI" className="block text-sm font-medium text-white mb-1">
                 BMI <span className="text-red-400">*</span>
               </label>
               <input
@@ -200,7 +200,7 @@ export default function DiabeticPage() {
                 value={formData.BMI}
                 onChange={handleChange}
                 step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.BMI ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.BMI ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter BMI"
               />
               {errors.BMI && <p className="mt-1 text-sm text-red-400">{errors.BMI}</p>}
@@ -217,7 +217,7 @@ export default function DiabeticPage() {
                 value={formData.Chol}
                 onChange={handleChange}
                 step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.Chol ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.Chol ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter cholesterol level"
               />
               {errors.Chol && <p className="mt-1 text-sm text-red-400">{errors.Chol}</p>}
@@ -234,7 +234,7 @@ export default function DiabeticPage() {
                 value={formData.TG}
                 onChange={handleChange}
                 step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.TG ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.TG ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter triglycerides level"
               />
               {errors.TG && <p className="mt-1 text-sm text-red-400">{errors.TG}</p>}
@@ -251,7 +251,7 @@ export default function DiabeticPage() {
                 value={formData.HDL}
                 onChange={handleChange}
                 step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.HDL ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.HDL ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter HDL level"
               />
               {errors.HDL && <p className="mt-1 text-sm text-red-400">{errors.HDL}</p>}
@@ -268,7 +268,7 @@ export default function DiabeticPage() {
                 value={formData.LDL}
                 onChange={handleChange}
                 step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.LDL ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.LDL ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter LDL level"
               />
               {errors.LDL && <p className="mt-1 text-sm text-red-400">{errors.LDL}</p>}
@@ -285,7 +285,7 @@ export default function DiabeticPage() {
                 value={formData.Cr}
                 onChange={handleChange}
                 step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.Cr ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.Cr ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter creatinine level"
               />
               {errors.Cr && <p className="mt-1 text-sm text-red-400">{errors.Cr}</p>}
@@ -302,7 +302,7 @@ export default function DiabeticPage() {
                 value={formData.BUN}
                 onChange={handleChange}
                 step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.BUN ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.BUN ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter BUN level"
               />
               {errors.BUN && <p className="mt-1 text-sm text-red-400">{errors.BUN}</p>}
@@ -324,7 +324,7 @@ export default function DiabeticPage() {
           <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
             <h2 className="text-xl font-bold text-white mb-4">Test Results</h2>
             <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4">
-              <pre className="text-gray-300 whitespace-pre-wrap break-words">
+              <pre className="text-white whitespace-pre-wrap break-words">
                 {typeof result === 'object' ? JSON.stringify(result, null, 2) : result}
               </pre>
             </div>

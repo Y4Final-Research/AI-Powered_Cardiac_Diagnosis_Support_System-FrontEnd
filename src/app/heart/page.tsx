@@ -198,7 +198,7 @@ export default function HeartPage() {
                 name="age"
                 value={formData.age}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.age ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.age ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter age"
               />
               {errors.age && <p className="mt-1 text-sm text-red-400">{errors.age}</p>}
@@ -213,7 +213,7 @@ export default function HeartPage() {
                 name="sex"
                 value={formData.sex}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.sex ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.sex ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select sex</option>
                 <option value="0">Female (0)</option>
@@ -231,7 +231,7 @@ export default function HeartPage() {
                 name="cp"
                 value={formData.cp}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.cp ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.cp ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select chest pain type</option>
                 <option value="0">Typical angina (0)</option>
@@ -252,7 +252,7 @@ export default function HeartPage() {
                 name="trestbps"
                 value={formData.trestbps}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.trestbps ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.trestbps ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter in mm Hg"
               />
               {errors.trestbps && <p className="mt-1 text-sm text-red-400">{errors.trestbps}</p>}
@@ -268,7 +268,7 @@ export default function HeartPage() {
                 name="chol"
                 value={formData.chol}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.chol ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.chol ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter in mg/dl"
               />
               {errors.chol && <p className="mt-1 text-sm text-red-400">{errors.chol}</p>}
@@ -283,7 +283,7 @@ export default function HeartPage() {
                 name="fbs"
                 value={formData.fbs}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.fbs ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.fbs ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select fasting blood sugar</option>
                 <option value="0">False (&lt; 120 mg/dl)</option>
@@ -301,7 +301,7 @@ export default function HeartPage() {
                 name="restecg"
                 value={formData.restecg}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.restecg ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.restecg ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select ECG result</option>
                 <option value="0">Normal</option>
@@ -321,7 +321,7 @@ export default function HeartPage() {
                 name="thalach"
                 value={formData.thalach}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.thalach ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.thalach ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter maximum heart rate"
               />
               {errors.thalach && <p className="mt-1 text-sm text-red-400">{errors.thalach}</p>}
@@ -336,7 +336,7 @@ export default function HeartPage() {
                 name="exang"
                 value={formData.exang}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.exang ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.exang ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select</option>
                 <option value="0">No</option>
@@ -356,7 +356,7 @@ export default function HeartPage() {
                 value={formData.oldpeak}
                 onChange={handleChange}
                 step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.oldpeak ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.oldpeak ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter ST depression"
               />
               {errors.oldpeak && <p className="mt-1 text-sm text-red-400">{errors.oldpeak}</p>}
@@ -371,7 +371,7 @@ export default function HeartPage() {
                 name="slope"
                 value={formData.slope}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.slope ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.slope ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select ST slope</option>
                 <option value="0">Upsloping</option>
@@ -390,7 +390,7 @@ export default function HeartPage() {
                 name="ca"
                 value={formData.ca}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.ca ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.ca ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select number of vessels</option>
                 <option value="0">0 vessels</option>
@@ -411,7 +411,7 @@ export default function HeartPage() {
                 name="thal"
                 value={formData.thal}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.thal ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.thal ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select thalassemia</option>
                 <option value="0">Normal</option>
@@ -438,7 +438,7 @@ export default function HeartPage() {
           <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
             <h2 className="text-xl font-bold text-white mb-4">Test Results</h2>
             <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4">
-              <pre className="text-gray-300 whitespace-pre-wrap break-words">
+              <pre className="text-white whitespace-pre-wrap break-words">
                 {typeof result === 'object' ? JSON.stringify(result, null, 2) : result}
               </pre>
             </div>
