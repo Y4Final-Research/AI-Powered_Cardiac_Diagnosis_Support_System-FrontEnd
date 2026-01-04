@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 type UserType = 'patient' | 'doctor';
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [userType, setUserType] = useState<UserType>('patient');
   const [formData, setFormData] = useState({
     name: '',
@@ -15,34 +17,89 @@ export default function RegisterPage() {
     doctorId: '',
   });
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
+    setLoading(true);
 
     // Validation
     if (!formData.name || !formData.email || !formData.password) {
       setError('Please fill in all required fields');
+      setLoading(false);
       return;
     }
 
     if (userType === 'patient' && !formData.age) {
       setError('Please enter your age');
+      setLoading(false);
       return;
     }
 
     if (userType === 'doctor' && !formData.doctorId) {
       setError('Please enter your Doctor ID');
+      setLoading(false);
       return;
     }
 
-    // TODO: Implement actual registration logic
-    console.log('Register:', { userType, ...formData });
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+      const endpoint = userType === 'doctor' 
+        ? `${baseUrl}/api/auth/signup/doctor`
+        : `${baseUrl}/api/auth/signup/patient`;
+
+      // Prepare payload based on user type
+      const payload = userType === 'doctor'
+        ? {
+            name: formData.name,
+            email: formData.email,
+            password: formData.password,
+            doctor_id: formData.doctorId,
+            role: 'doctor',
+          }
+        : {
+            name: formData.name,
+            email: formData.email,
+            password: formData.password,
+            age: Number(formData.age),
+            role: 'patient',
+          };
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Registration failed' }));
+        setError(errorData.message || errorData.detail || `Registration failed with status ${response.status}`);
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      setSuccess('Registration successful! Redirecting to login...');
+      
+      // Redirect to login page after 2 seconds
+      setTimeout(() => {
+        router.push('/login');
+      }, 2000);
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      setError(error.message || 'An error occurred during registration. Please try again.');
+      setLoading(false);
+    }
   };
 
   return (
@@ -90,6 +147,11 @@ export default function RegisterPage() {
             {error && (
               <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 text-red-400 text-sm">
                 {error}
+              </div>
+            )}
+            {success && (
+              <div className="bg-green-500/20 border border-green-500/50 rounded-lg p-3 text-green-400 text-sm">
+                {success}
               </div>
             )}
 
@@ -187,9 +249,10 @@ export default function RegisterPage() {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-colors duration-200 shadow-lg shadow-green-500/20"
+              disabled={loading}
+              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-600/50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-colors duration-200 shadow-lg shadow-green-500/20"
             >
-              Register as {userType === 'patient' ? 'Patient' : 'Doctor'}
+              {loading ? 'Registering...' : `Register as ${userType === 'patient' ? 'Patient' : 'Doctor'}`}
             </button>
           </form>
 

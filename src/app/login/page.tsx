@@ -2,23 +2,72 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
     
     if (!email || !password) {
       setError('Please fill in all fields');
+      setLoading(false);
       return;
     }
 
-    // TODO: Implement actual login logic
-    console.log('Login:', { email, password });
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+      const endpoint = `${baseUrl}/api/auth/login/json`;
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Login failed' }));
+        setError(errorData.message || errorData.detail || `Login failed with status ${response.status}`);
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      
+      // Save to localStorage
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('token_type', data.token_type);
+      localStorage.setItem('user_id', data.user_id);
+      localStorage.setItem('role', data.role);
+      localStorage.setItem('name', data.name);
+      localStorage.setItem('user', JSON.stringify(data));
+
+      // Redirect based on role
+      if (data.role === 'patient') {
+        router.push('/');
+      } else if (data.role === 'doctor') {
+        router.push('/doctor');
+      } else {
+        setError('Unknown user role');
+        setLoading(false);
+      }
+    } catch (error: any) {
+      console.error('Login error:', error);
+      setError(error.message || 'An error occurred during login. Please try again.');
+      setLoading(false);
+    }
   };
 
   return (
@@ -78,9 +127,10 @@ export default function LoginPage() {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors duration-200 shadow-lg shadow-blue-500/20"
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-colors duration-200 shadow-lg shadow-blue-500/20"
             >
-              Login
+              {loading ? 'Logging in...' : 'Login'}
             </button>
           </form>
 
