@@ -23,6 +23,10 @@ export default function DoctorPage() {
   const [labComparison, setLabComparison] = useState<any>(null);
   const [recommendation, setRecommendation] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [doctorRecommendations, setDoctorRecommendations] = useState<any[]>([]);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+  const [editingDoctorId, setEditingDoctorId] = useState<string | null>(null);
+  const [editingDoctorText, setEditingDoctorText] = useState<string>('');
   const [submittingRecommendation, setSubmittingRecommendation] = useState(false);
   const [recommendationError, setRecommendationError] = useState('');
   const [recommendationSuccess, setRecommendationSuccess] = useState('');
@@ -77,6 +81,54 @@ export default function DoctorPage() {
       fetchPatients();
     }
   }, [user]);
+
+  // fetch doctor recommendations (dashboard)
+  const fetchDoctorRecommendations = async () => {
+    const accessToken = localStorage.getItem('access_token');
+    if (!accessToken) return;
+
+    try {
+      setLoadingRecommendations(true);
+      const res = await fetch('http://0.0.0.0:8081/api/recommendations/', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          const currentUserId = localStorage.getItem('user_id') || user?.user_id || user?._id || '';
+          const filtered = data.filter((r: any) => String(r.doctor_id) === String(currentUserId));
+          filtered.sort((a: any, b: any) => new Date(b.date || b.created_at || b.created || 0).getTime() - new Date(a.date || a.created_at || a.created || 0).getTime());
+          setDoctorRecommendations(filtered);
+        } else {
+          setDoctorRecommendations([]);
+        }
+      } else {
+        console.error('Failed to fetch recommendations');
+      }
+    } catch (err) {
+      console.error('Error fetching recommendations', err);
+    } finally {
+      setLoadingRecommendations(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user) fetchDoctorRecommendations();
+  }, [user]);
+
+  const formatDate = (dateString: string) => {
+    try {
+      const d = new Date(dateString);
+      return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch {
+      return dateString;
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('access_token');
@@ -290,8 +342,8 @@ Respond ONLY in valid JSON:
         return;
       }
 
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-      const response = await fetch(`${baseUrl}/api/recommendations/`, {
+      const url = `http://0.0.0.0:8081/api/recommendations/`;
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -322,6 +374,94 @@ Respond ONLY in valid JSON:
       setSubmittingRecommendation(false);
     }
   };
+
+  const startEditDoctorRec = (rec: any) => {
+    const recId = rec.id || rec._id;
+    setEditingDoctorId(recId);
+    setEditingDoctorText(rec.recommendation || rec.text || '');
+  };
+
+  const cancelEditDoctorRec = () => {
+    setEditingDoctorId(null);
+    setEditingDoctorText('');
+  };
+
+  const saveDoctorRecEdit = async (id: string) => {
+    const accessToken = localStorage.getItem('access_token');
+    if (!accessToken) {
+      setRecommendationError('Not authenticated');
+      return;
+    }
+
+    try {
+      // find patient_id from current list
+      const existing = doctorRecommendations.find((r: any) => (r.id === id) || (r._id === id));
+      const patient_id = existing?.patient_id || existing?.patientId || selectedPatient;
+      if (!patient_id) {
+        setRecommendationError('Missing patient id for update');
+        return;
+      }
+
+      const res = await fetch(`http://0.0.0.0:8081/api/recommendations/${id}/`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ patient_id: patient_id, recommendation: editingDoctorText }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Failed to update' }));
+        setRecommendationError(err.message || 'Failed to update recommendation');
+        return;
+      }
+
+      setRecommendationSuccess('Recommendation updated');
+      cancelEditDoctorRec();
+      await fetchDoctorRecommendations();
+      setTimeout(() => setRecommendationSuccess(''), 3000);
+    } catch (err: any) {
+      console.error('Update error', err);
+      setRecommendationError('Failed to update recommendation');
+    }
+  };
+
+  const deleteDoctorRec = async (id: string) => {
+    if (!window.confirm('Delete this recommendation?')) return;
+    const accessToken = localStorage.getItem('access_token');
+    if (!accessToken) {
+      setRecommendationError('Not authenticated');
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://0.0.0.0:8081/api/recommendations/${id}/`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Failed to delete' }));
+        setRecommendationError(err.message || 'Failed to delete recommendation');
+        return;
+      }
+
+      setRecommendationSuccess('Recommendation deleted');
+      await fetchDoctorRecommendations();
+      setTimeout(() => setRecommendationSuccess(''), 3000);
+    } catch (err: any) {
+      console.error('Delete error', err);
+      setRecommendationError('Failed to delete recommendation');
+    }
+  };
+
+  // patient-specific fetch useEffect removed
+
+  // patient edit/delete helper functions removed (not needed)
 
   if (!user) {
     return (
@@ -641,6 +781,58 @@ Respond ONLY in valid JSON:
             </form>
           </div>
         )}
+
+        {/* Doctor Recommendations (dashboard) */}
+        <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-cyan-500/20 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-white">DOCTOR RECOMMENDATIONS</h2>
+          </div>
+          <div className="space-y-4">
+            {loadingRecommendations ? (
+              <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4 text-center text-gray-400">Loading recommendations...</div>
+            ) : doctorRecommendations.length === 0 ? (
+              <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4 text-center text-gray-400">No recommendations available yet</div>
+            ) : (
+              doctorRecommendations.map((rec) => {
+                const recId = rec.id || rec._id;
+                return (
+                  <div key={recId} className="bg-[#0f0f1a] border border-cyan-500/30 rounded-lg p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <p className="text-cyan-400 font-semibold">{rec.doctor_name || rec.created_by_name || 'Doctor'}</p>
+                        <p className="text-gray-300 text-sm">Patient: {rec.patient_name || rec.patientName || rec.patient || 'Patient'}</p>
+                        <p className="text-gray-400 text-sm">{formatDate(rec.date || rec.created_at || rec.created || '')}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {editingDoctorId === recId ? (
+                          <>
+                            <button type="button" onClick={() => saveDoctorRecEdit(recId)} className="text-green-400">Save</button>
+                            <button type="button" onClick={cancelEditDoctorRec} className="text-yellow-400">Cancel</button>
+                          </>
+                        ) : (
+                          <>
+                            <button type="button" onClick={() => startEditDoctorRec(rec)} className="text-blue-400">Edit</button>
+                            <button type="button" onClick={() => deleteDoctorRec(recId)} className="text-red-400">Delete</button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    {editingDoctorId === recId ? (
+                      <textarea value={editingDoctorText} onChange={(e) => setEditingDoctorText(e.target.value)} className="w-full bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-2 text-white" rows={4} />
+                    ) : (
+                      <p className="text-gray-300 leading-relaxed">{rec.recommendation || rec.text}</p>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
 
         {/* Doctor Information */}
         <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">

@@ -26,6 +26,8 @@ export default function Home() {
   const [recommendedTests, setRecommendedTests] = useState<string[] | null>(null);
   const [doctorRecommendations, setDoctorRecommendations] = useState<Recommendation[]>([]);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+  const [role, setRole] = useState<string>('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -244,6 +246,18 @@ Respond ONLY in valid JSON:
     const checkAuth = () => {
       const accessToken = localStorage.getItem('access_token');
       setIsLoggedIn(!!accessToken);
+      // populate current user id and role for later use
+      const storedUser = localStorage.getItem('user');
+      const storedRole = localStorage.getItem('role') || '';
+      setRole(storedRole);
+      const storedUserId = localStorage.getItem('user_id') || '';
+      if (storedUserId) setCurrentUserId(storedUserId);
+      else if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser);
+          setCurrentUserId(parsed.user_id || parsed._id || parsed.id || '');
+        } catch {}
+      }
     };
 
     checkAuth();
@@ -261,24 +275,30 @@ Respond ONLY in valid JSON:
       setLoadingRecommendations(true);
       try {
         const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-        const response = await fetch(`${baseUrl}/api/recommendations/`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
+        // if logged user is a patient, call server endpoint that returns only that patient's recommendations
+        const usePatientEndpoint = role === 'patient' && currentUserId;
+        const response = await fetch(
+          usePatientEndpoint
+            ? `${baseUrl}/api/recommendations/patient/${currentUserId}?skip=0&limit=100`
+            : `${baseUrl}/api/recommendations/`,
+          {
+           method: 'GET',
+           headers: {
+             'Authorization': `Bearer ${accessToken}`,
+             'Content-Type': 'application/json',
+           },
+         });
 
-        if (response.ok) {
-          const data = await response.json();
-          // Sort by date (newest first)
-          const sortedData = data.sort((a: Recommendation, b: Recommendation) => 
-            new Date(b.date).getTime() - new Date(a.date).getTime()
-          );
-          setDoctorRecommendations(sortedData);
-        } else {
-          console.error('Failed to fetch recommendations');
-        }
+         if (response.ok) {
+           const data = await response.json();
+           // Sort by date (newest first)
+           const sortedData = data.sort((a: Recommendation, b: Recommendation) => 
+             new Date(b.date).getTime() - new Date(a.date).getTime()
+           );
+           setDoctorRecommendations(sortedData);
+         } else {
+           console.error('Failed to fetch recommendations');
+         }
       } catch (error) {
         console.error('Error fetching recommendations:', error);
       } finally {
@@ -346,7 +366,7 @@ Respond ONLY in valid JSON:
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-white">
-            AI Diagnostic Dashboard
+            Lab Report Dashboard
           </h1>
           <div className="flex gap-4">
             {isLoggedIn ? (
@@ -675,7 +695,7 @@ Respond ONLY in valid JSON:
           <div className="space-y-6">
                       
             {/* Diagnostic Test Buttons */}
-            <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
+            <div className="bg-[#1f1f2f] border border-[#2a2a3e] rounded-lg p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
                   <svg
