@@ -1,5 +1,5 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface FormData {
   age: string;
@@ -41,6 +41,61 @@ export default function HeartPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [fetchingData, setFetchingData] = useState(true);
+  
+  // Fetch data when component mounts
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const userId = localStorage.getItem('user_id');
+        const accessToken = localStorage.getItem('access_token');
+        
+        if (!userId || !accessToken) {
+          setFetchingData(false);
+          return;
+        }
+        
+        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+        const response = await fetch(`${baseUrl}/api/heart/user/${userId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Fetched heart data:', data);
+          
+          // Populate form with fetched data
+          setFormData({
+            age: data.age?.toString() || '',
+            sex: data.sex?.toString() || '',
+            cp: data.cp?.toString() || '',
+            trestbps: data.trestbps?.toString() || '',
+            chol: data.chol?.toString() || '',
+            fbs: data.fbs?.toString() || '',
+            restecg: data.restecg?.toString() || '',
+            thalach: data.thalach?.toString() || '',
+            exang: data.exang?.toString() || '',
+            oldpeak: data.oldpeak?.toString() || '',
+            slope: data.slope?.toString() || '',
+            ca: data.ca?.toString() || '',
+            thal: data.thal?.toString() || ''
+          });
+        } else {
+          console.error('Failed to fetch heart data:', response.status);
+        }
+      } catch (error) {
+        console.error('Error fetching heart data:', error);
+      } finally {
+        setFetchingData(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -184,6 +239,12 @@ export default function HeartPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Heart Disease Test</h1>
           <p className="text-gray-400">Enter patient data for heart disease risk assessment</p>
+          {fetchingData && (
+            <div className="mt-4 text-blue-400 flex items-center justify-center gap-2">
+              <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+              <span>Loading your previous data...</span>
+            </div>
+          )}
         </div>
         
         <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6 mb-8">
@@ -198,7 +259,7 @@ export default function HeartPage() {
                 name="age"
                 value={formData.age}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.age ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.age ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter age"
               />
               {errors.age && <p className="mt-1 text-sm text-red-400">{errors.age}</p>}
@@ -213,7 +274,7 @@ export default function HeartPage() {
                 name="sex"
                 value={formData.sex}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.sex ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.sex ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select sex</option>
                 <option value="0">Female (0)</option>
@@ -231,7 +292,7 @@ export default function HeartPage() {
                 name="cp"
                 value={formData.cp}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.cp ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.cp ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select chest pain type</option>
                 <option value="0">Typical angina (0)</option>
@@ -252,7 +313,7 @@ export default function HeartPage() {
                 name="trestbps"
                 value={formData.trestbps}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.trestbps ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.trestbps ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter in mm Hg"
               />
               {errors.trestbps && <p className="mt-1 text-sm text-red-400">{errors.trestbps}</p>}
@@ -268,7 +329,7 @@ export default function HeartPage() {
                 name="chol"
                 value={formData.chol}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.chol ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.chol ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter in mg/dl"
               />
               {errors.chol && <p className="mt-1 text-sm text-red-400">{errors.chol}</p>}
@@ -283,7 +344,7 @@ export default function HeartPage() {
                 name="fbs"
                 value={formData.fbs}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.fbs ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.fbs ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select fasting blood sugar</option>
                 <option value="0">False (&lt; 120 mg/dl)</option>
@@ -301,7 +362,7 @@ export default function HeartPage() {
                 name="restecg"
                 value={formData.restecg}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.restecg ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.restecg ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select ECG result</option>
                 <option value="0">Normal</option>
@@ -321,7 +382,7 @@ export default function HeartPage() {
                 name="thalach"
                 value={formData.thalach}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.thalach ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.thalach ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter maximum heart rate"
               />
               {errors.thalach && <p className="mt-1 text-sm text-red-400">{errors.thalach}</p>}
@@ -336,7 +397,7 @@ export default function HeartPage() {
                 name="exang"
                 value={formData.exang}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.exang ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.exang ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select</option>
                 <option value="0">No</option>
@@ -356,7 +417,7 @@ export default function HeartPage() {
                 value={formData.oldpeak}
                 onChange={handleChange}
                 step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.oldpeak ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.oldpeak ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter ST depression"
               />
               {errors.oldpeak && <p className="mt-1 text-sm text-red-400">{errors.oldpeak}</p>}
@@ -371,7 +432,7 @@ export default function HeartPage() {
                 name="slope"
                 value={formData.slope}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.slope ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.slope ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select ST slope</option>
                 <option value="0">Upsloping</option>
@@ -390,7 +451,7 @@ export default function HeartPage() {
                 name="ca"
                 value={formData.ca}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.ca ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.ca ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select number of vessels</option>
                 <option value="0">0 vessels</option>
@@ -411,7 +472,7 @@ export default function HeartPage() {
                 name="thal"
                 value={formData.thal}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.thal ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.thal ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select thalassemia</option>
                 <option value="0">Normal</option>
@@ -425,10 +486,10 @@ export default function HeartPage() {
             <div className="md:col-span-2">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || fetchingData}
                 className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Submitting...' : 'Submit Heart Disease Test'}
+                {fetchingData ? 'Loading data...' : loading ? 'Submitting...' : 'Submit Heart Disease Test'}
               </button>
             </div>
           </form>

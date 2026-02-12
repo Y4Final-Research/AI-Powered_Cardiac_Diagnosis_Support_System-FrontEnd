@@ -1,5 +1,5 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 interface FormData {
   Age: string;
   Gender: string;
@@ -32,6 +32,57 @@ export default function DiabeticPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [fetchingData, setFetchingData] = useState(true);
+  
+  // Fetch data when component mounts
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const userId = localStorage.getItem('user_id');
+        const accessToken = localStorage.getItem('access_token');
+        
+        if (!userId || !accessToken) {
+          setFetchingData(false);
+          return;
+        }
+        
+        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+        const response = await fetch(`${baseUrl}/api/diabetic/user/${userId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Fetched diabetic data:', data);
+          
+          // Populate form with fetched data
+          setFormData({
+            Age: data.Age?.toString() || '',
+            Gender: data.Gender || '',
+            BMI: data.BMI?.toString() || '',
+            Chol: data.Chol?.toString() || '',
+            TG: data.TG?.toString() || '',
+            HDL: data.HDL?.toString() || '',
+            LDL: data.LDL?.toString() || '',
+            Cr: data.Cr?.toString() || '',
+            BUN: data.BUN?.toString() || ''
+          });
+        } else {
+          console.error('Failed to fetch diabetic data:', response.status);
+        }
+      } catch (error) {
+        console.error('Error fetching diabetic data:', error);
+      } finally {
+        setFetchingData(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -68,22 +119,22 @@ export default function DiabeticPage() {
     }
     
     // Chol validation (1-20)
-    if (!formData.Chol || isNaN(Number(formData.Chol)) || Number(formData.Chol) < 1 || Number(formData.Chol) > 20) {
+    if (!formData.Chol || isNaN(Number(formData.Chol)) || Number(formData.Chol) < 1 || Number(formData.Chol) > 500) {
       newErrors.Chol = 'Cholesterol must be between 1 and 20';
     }
     
     // TG validation (0.1-10)
-    if (!formData.TG || isNaN(Number(formData.TG)) || Number(formData.TG) < 0.1 || Number(formData.TG) > 10) {
+    if (!formData.TG || isNaN(Number(formData.TG)) || Number(formData.TG) < 0.1 || Number(formData.TG) > 500) {
       newErrors.TG = 'Triglycerides must be between 0.1 and 10';
     }
     
     // HDL validation (0.1-10)
-    if (!formData.HDL || isNaN(Number(formData.HDL)) || Number(formData.HDL) < 0.1 || Number(formData.HDL) > 10) {
+    if (!formData.HDL || isNaN(Number(formData.HDL)) || Number(formData.HDL) < 0.1 || Number(formData.HDL) > 100) {
       newErrors.HDL = 'HDL must be between 0.1 and 10';
     }
     
     // LDL validation (0.1-20)
-    if (!formData.LDL || isNaN(Number(formData.LDL)) || Number(formData.LDL) < 0.1 || Number(formData.LDL) > 20) {
+    if (!formData.LDL || isNaN(Number(formData.LDL)) || Number(formData.LDL) < 0.1 || Number(formData.LDL) > 500) {
       newErrors.LDL = 'LDL must be between 0.1 and 20';
     }
     
@@ -151,6 +202,12 @@ export default function DiabeticPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Diabetic Test</h1>
           <p className="text-gray-400">Enter patient data for diabetic risk assessment</p>
+          {fetchingData && (
+            <div className="mt-4 text-blue-400 flex items-center justify-center gap-2">
+              <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+              <span>Loading your previous data...</span>
+            </div>
+          )}
         </div>
         
         <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6 mb-8">
@@ -165,7 +222,7 @@ export default function DiabeticPage() {
                 name="Age"
                 value={formData.Age}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.Age ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.Age ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter age"
               />
               {errors.Age && <p className="mt-1 text-sm text-red-400">{errors.Age}</p>}
@@ -180,7 +237,7 @@ export default function DiabeticPage() {
                 name="Gender"
                 value={formData.Gender}
                 onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.Gender ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.Gender ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select gender</option>
                 <option value="M">Male (M)</option>
@@ -190,7 +247,7 @@ export default function DiabeticPage() {
             </div>
             
             <div>
-              <label htmlFor="BMI" className="block text-sm font-medium text-white mb-1">
+              <label htmlFor="BMI" className="block text-sm font-medium text-gray-300 mb-1">
                 BMI <span className="text-red-400">*</span>
               </label>
               <input
@@ -200,7 +257,7 @@ export default function DiabeticPage() {
                 value={formData.BMI}
                 onChange={handleChange}
                 step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.BMI ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.BMI ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter BMI"
               />
               {errors.BMI && <p className="mt-1 text-sm text-red-400">{errors.BMI}</p>}
@@ -217,7 +274,7 @@ export default function DiabeticPage() {
                 value={formData.Chol}
                 onChange={handleChange}
                 step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.Chol ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.Chol ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter cholesterol level"
               />
               {errors.Chol && <p className="mt-1 text-sm text-red-400">{errors.Chol}</p>}
@@ -234,7 +291,7 @@ export default function DiabeticPage() {
                 value={formData.TG}
                 onChange={handleChange}
                 step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.TG ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.TG ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter triglycerides level"
               />
               {errors.TG && <p className="mt-1 text-sm text-red-400">{errors.TG}</p>}
@@ -251,7 +308,7 @@ export default function DiabeticPage() {
                 value={formData.HDL}
                 onChange={handleChange}
                 step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.HDL ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.HDL ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter HDL level"
               />
               {errors.HDL && <p className="mt-1 text-sm text-red-400">{errors.HDL}</p>}
@@ -268,7 +325,7 @@ export default function DiabeticPage() {
                 value={formData.LDL}
                 onChange={handleChange}
                 step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.LDL ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.LDL ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter LDL level"
               />
               {errors.LDL && <p className="mt-1 text-sm text-red-400">{errors.LDL}</p>}
@@ -285,7 +342,7 @@ export default function DiabeticPage() {
                 value={formData.Cr}
                 onChange={handleChange}
                 step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.Cr ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.Cr ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter creatinine level"
               />
               {errors.Cr && <p className="mt-1 text-sm text-red-400">{errors.Cr}</p>}
@@ -302,7 +359,7 @@ export default function DiabeticPage() {
                 value={formData.BUN}
                 onChange={handleChange}
                 step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] text-white border rounded-lg ${errors.BUN ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.BUN ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter BUN level"
               />
               {errors.BUN && <p className="mt-1 text-sm text-red-400">{errors.BUN}</p>}
@@ -311,10 +368,10 @@ export default function DiabeticPage() {
             <div className="md:col-span-2">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || fetchingData}
                 className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Submitting...' : 'Submit Diabetic Test'}
+                {fetchingData ? 'Loading data...' : loading ? 'Submitting...' : 'Submit Diabetic Test'}
               </button>
             </div>
           </form>

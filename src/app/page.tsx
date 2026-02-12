@@ -26,8 +26,9 @@ export default function Home() {
   const [recommendedTests, setRecommendedTests] = useState<string[] | null>(null);
   const [doctorRecommendations, setDoctorRecommendations] = useState<Recommendation[]>([]);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string>('');
-  const [role, setRole] = useState<string>('');
+  const [patientHistoryData, setPatientHistoryData] = useState<any[]>([]);
+  const [loadingPatientHistory, setLoadingPatientHistory] = useState(false);
+  const [selectedPatientHistory, setSelectedPatientHistory] = useState<any>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -50,6 +51,8 @@ export default function Home() {
     setPatientInfo(null);
     setJsonGroup1(null);
     setJsonGroup2(null);
+    setRecommendedTests(null);
+    setSelectedPatientHistory(null);
 
     // Preview image
     const reader = new FileReader();
@@ -127,12 +130,32 @@ STEP 4 – SUMMARY
 Short medical-friendly summary.
 DO NOT give a diagnosis.
 
-STEP 5 – RECOMMENDED NEXT TESTS
-Based on the lab report analysis, recommend what type of tests the patient should do next.
-- If abnormalities are found, suggest relevant follow-up tests (e.g., "ECG", "Echocardiogram", "CT Scan", "MRI", "Additional Blood Tests", "Ultrasound", etc.)
+STEP 5 – RECOMMENDED NEXT TESTS WITH REASONS
+Based on the lab report analysis, recommend what type of tests the patient should do next and explain WHY each test is recommended.
+
+Format each recommendation as: "Test Name - Reason for recommendation"
+
+Guidelines:
+- If abnormalities are found, suggest relevant follow-up tests with explanations:
+  * "ECG - To evaluate heart rhythm abnormalities indicated by elevated troponin levels"
+  * "Echocardiogram - To assess heart structure and function due to abnormal cholesterol ratios"
+  * "CT Scan - To investigate potential organ damage from elevated liver enzymes"
+  * "MRI - To examine soft tissue abnormalities suggested by inflammatory markers"
+  * "Additional Blood Tests - To monitor trending values and confirm initial findings"
+  * "Ultrasound - To visualize organ structure for abnormalities in size or texture"
+  
 - If all values are normal and no follow-up is needed, set recommendedTests to an empty array []
-- Be specific about test names
-- Consider the patient's age, gender, and abnormal values when recommending tests
+
+Consider these factors when recommending tests:
+- Patient's age and gender
+- Abnormal lab values and their clinical significance
+- Potential underlying conditions suggested by the results
+- Standard medical protocols for follow-up care
+
+Example outputs:
+- ["ECG - Elevated troponin levels suggest possible cardiac stress"]
+- ["Lipid Panel - Abnormal cholesterol ratio indicates cardiovascular risk"]
+- [] (empty array when no follow-up needed)
 
 STEP 6 – OUTPUT
 Respond ONLY in valid JSON:
@@ -202,11 +225,119 @@ Respond ONLY in valid JSON:
 
       const parsed = JSON.parse(cleanedText);
       console.log(parsed);
+
+      
       // 7️⃣ Non-medical document handling
       if (!parsed.isMedical) {
         setTestResult(parsed.error);
         setAnalyzing(false);
         return;
+      }
+
+      // Call diabetic API if extractedJsonGroup1 data is available
+      if (parsed.extractedJsonGroup1 && Object.keys(parsed.extractedJsonGroup1).length > 0) {
+        try {
+          const userId = localStorage.getItem('user_id');
+          const accessToken = localStorage.getItem('access_token');
+          
+          if (userId && accessToken) {
+            // Build diabetic data ensuring all fields are present
+            const diabeticData = {
+              userId: userId,
+              Age: parsed.extractedJsonGroup1.Age ?? null,
+              BMI: parsed.extractedJsonGroup1.BMI ?? null,
+              BUN: parsed.extractedJsonGroup1.BUN ?? null,
+              Chol: parsed.extractedJsonGroup1.Chol ?? null,
+              Cr: parsed.extractedJsonGroup1.Cr ?? null,
+              Gender: parsed.extractedJsonGroup1.Gender ?? null,
+              HDL: parsed.extractedJsonGroup1.HDL ?? null,
+              LDL: parsed.extractedJsonGroup1.LDL ?? null,
+              TG: parsed.extractedJsonGroup1.TG ?? null
+            };
+            
+            // Remove undefined values but keep null values
+            const filteredData = Object.fromEntries(
+              Object.entries(diabeticData).filter(([_, v]) => v !== undefined)
+            );
+            const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+            console.log('Sending diabetic data:', filteredData);
+            const response = await fetch(`${baseUrl}/api/diabetic/`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(filteredData),
+            });
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error('Failed to call diabetic API:', response.status, errorText);
+            } else {
+              const diabeticResult = await response.json();
+              console.log('Diabetic API result:', diabeticResult);
+            }
+          } else {
+            console.warn('User ID or access token not found in localStorage for diabetic API call');
+          }
+        } catch (error) {
+          console.error('Error calling diabetic API:', error);
+        }
+      }
+
+      // Call heart API if extractedJsonGroup2 data is available
+      if (parsed.extractedJsonGroup2 && Object.keys(parsed.extractedJsonGroup2).length > 0) {
+        try {
+          const userId = localStorage.getItem('user_id');
+          const accessToken = localStorage.getItem('access_token');
+          
+          if (userId && accessToken) {
+            const heartData = {
+              userId: userId,
+              age: parsed.extractedJsonGroup2.age ?? null,
+              ca: parsed.extractedJsonGroup2.ca ?? null,
+              chol: parsed.extractedJsonGroup2.chol ?? null,
+              cp: parsed.extractedJsonGroup2.cp ?? null,
+              exang: parsed.extractedJsonGroup2.exang ?? null,
+              fbs: parsed.extractedJsonGroup2.fbs ?? null,
+              oldpeak: parsed.extractedJsonGroup2.oldpeak ?? null,
+              restecg: parsed.extractedJsonGroup2.restecg ?? null,
+              sex: parsed.extractedJsonGroup2.sex ?? null,
+              slope: parsed.extractedJsonGroup2.slope ?? null,
+              thal: parsed.extractedJsonGroup2.thal ?? null,
+              thalach: parsed.extractedJsonGroup2.thalach ?? null,
+              trestbps: parsed.extractedJsonGroup2.trestbps ?? null
+            };
+            
+            // Remove undefined values but keep null values
+            const filteredHeartData = Object.fromEntries(
+              Object.entries(heartData).filter(([_, v]) => v !== undefined)
+            );
+            
+            const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+            console.log('Sending heart data:', filteredHeartData);
+            const response = await fetch(`${baseUrl}/api/heart/`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(filteredHeartData),
+            });
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error('Failed to call heart API:', response.status, errorText);
+            } else {
+              const heartResult = await response.json();
+              console.log('Heart API result:', heartResult);
+            }
+          } else {
+            console.warn('User ID or access token not found in localStorage for heart API call');
+          }
+        } catch (error) {
+          console.error('Error calling heart API:', error);
+        }
       }
 
       // 8️⃣ SUCCESS → store & display
@@ -218,6 +349,42 @@ Respond ONLY in valid JSON:
       setJsonGroup1(parsed.extractedJsonGroup1);
       setJsonGroup2(parsed.extractedJsonGroup2);
       setRecommendedTests(parsed.recommendedTests || []);
+      
+      // Save to database when isMedical is true
+      try {
+        const userId = localStorage.getItem('user_id');
+        const accessToken = localStorage.getItem('access_token');
+        
+        if (userId && accessToken) {
+          const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+          const response = await fetch(`${baseUrl}/api/patient-history`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: userId,
+              extractedJsonGroup1: parsed.extractedJsonGroup1,
+              extractedJsonGroup2: parsed.extractedJsonGroup2,
+              isMedical: parsed.isMedical,
+              labComparison: parsed.labComparison,
+              patientInfo: parsed.patientInfo,
+              recommendedTests: parsed.recommendedTests || [],
+              summary: parsed.summary
+            }),
+          });
+          
+          if (!response.ok) {
+            console.error('Failed to save patient history to database:', response.status);
+          }
+        } else {
+          console.warn('User ID or access token not found in localStorage');
+        }
+      } catch (error) {
+        console.error('Error saving patient history to database:', error);
+      }
+      
       setAnalyzing(false);
     } catch (error: any) {
       console.error("Gemini Error:", error);
@@ -236,6 +403,7 @@ Respond ONLY in valid JSON:
     setJsonGroup2(null);
     setRecommendedTests(null);
     setAnalyzing(false);
+    setSelectedPatientHistory(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -246,18 +414,6 @@ Respond ONLY in valid JSON:
     const checkAuth = () => {
       const accessToken = localStorage.getItem('access_token');
       setIsLoggedIn(!!accessToken);
-      // populate current user id and role for later use
-      const storedUser = localStorage.getItem('user');
-      const storedRole = localStorage.getItem('role') || '';
-      setRole(storedRole);
-      const storedUserId = localStorage.getItem('user_id') || '';
-      if (storedUserId) setCurrentUserId(storedUserId);
-      else if (storedUser) {
-        try {
-          const parsed = JSON.parse(storedUser);
-          setCurrentUserId(parsed.user_id || parsed._id || parsed.id || '');
-        } catch {}
-      }
     };
 
     checkAuth();
@@ -275,30 +431,24 @@ Respond ONLY in valid JSON:
       setLoadingRecommendations(true);
       try {
         const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-        // if logged user is a patient, call server endpoint that returns only that patient's recommendations
-        const usePatientEndpoint = role === 'patient' && currentUserId;
-        const response = await fetch(
-          usePatientEndpoint
-            ? `${baseUrl}/api/recommendations/patient/${currentUserId}?skip=0&limit=100`
-            : `${baseUrl}/api/recommendations/`,
-          {
-           method: 'GET',
-           headers: {
-             'Authorization': `Bearer ${accessToken}`,
-             'Content-Type': 'application/json',
-           },
-         });
+        const response = await fetch(`${baseUrl}/api/recommendations/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
 
-         if (response.ok) {
-           const data = await response.json();
-           // Sort by date (newest first)
-           const sortedData = data.sort((a: Recommendation, b: Recommendation) => 
-             new Date(b.date).getTime() - new Date(a.date).getTime()
-           );
-           setDoctorRecommendations(sortedData);
-         } else {
-           console.error('Failed to fetch recommendations');
-         }
+        if (response.ok) {
+          const data = await response.json();
+          // Sort by date (newest first)
+          const sortedData = data.sort((a: Recommendation, b: Recommendation) => 
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+          setDoctorRecommendations(sortedData);
+        } else {
+          console.error('Failed to fetch recommendations');
+        }
       } catch (error) {
         console.error('Error fetching recommendations:', error);
       } finally {
@@ -308,6 +458,48 @@ Respond ONLY in valid JSON:
 
     if (isLoggedIn) {
       fetchRecommendations();
+    }
+  }, [isLoggedIn]);
+
+  // Fetch patient history
+  useEffect(() => {
+    const fetchPatientHistory = async () => {
+      const accessToken = localStorage.getItem('access_token');
+      const userId = localStorage.getItem('user_id');
+      
+      if (!accessToken || !userId) return;
+
+      setLoadingPatientHistory(true);
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+        const response = await fetch(`${baseUrl}/api/patient-history?user_id=${userId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // Sort by date (newest first)
+          const sortedData = data.sort((a: any, b: any) => 
+            new Date(b.date || b.created_at || b.timestamp).getTime() - 
+            new Date(a.date || a.created_at || a.timestamp).getTime()
+          );
+          setPatientHistoryData(sortedData);
+        } else {
+          console.error('Failed to fetch patient history');
+        }
+      } catch (error) {
+        console.error('Error fetching patient history:', error);
+      } finally {
+        setLoadingPatientHistory(false);
+      }
+    };
+
+    if (isLoggedIn) {
+      fetchPatientHistory();
     }
   }, [isLoggedIn]);
 
@@ -338,27 +530,44 @@ Respond ONLY in valid JSON:
     router.push('/login');
   };
 
-  // Mock patient history data
-  const patientHistory = [
-    {
-      date: "2024-01-15",
-      test: "ECG Test",
-      result: "Normal",
-      doctor: "Dr. Smith",
-    },
-    {
-      date: "2023-12-10",
-      test: "Blood Test",
-      result: "Normal",
-      doctor: "Dr. Johnson",
-    },
-    {
-      date: "2023-11-05",
-      test: "ECG Test",
-      result: "Minor Irregularity",
-      doctor: "Dr. Smith",
-    },
-  ];
+  // Load patient history data into display sections
+  const loadPatientHistory = (historyItem: any) => {
+    setSelectedPatientHistory(historyItem);
+    
+    // Load summary into test result
+    if (historyItem.summary) {
+      setTestResult(historyItem.summary);
+    }
+    
+    // Load lab comparison data
+    if (historyItem.labComparison) {
+      setLabComparison(historyItem.labComparison);
+    }
+    
+    // Load patient info
+    if (historyItem.patientInfo) {
+      setPatientInfo(historyItem.patientInfo);
+    }
+    
+    // Load extracted JSON groups
+    if (historyItem.extractedJsonGroup1) {
+      setJsonGroup1(historyItem.extractedJsonGroup1);
+    }
+    
+    if (historyItem.extractedJsonGroup2) {
+      setJsonGroup2(historyItem.extractedJsonGroup2);
+    }
+    
+    // Load recommended tests
+    if (historyItem.recommendedTests) {
+      setRecommendedTests(historyItem.recommendedTests);
+    }
+    
+    // Scroll to top to show the loaded data
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] p-6">
@@ -366,14 +575,14 @@ Respond ONLY in valid JSON:
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-white">
-            Lab Report Dashboard
+            AI Diagnostic Dashboard
           </h1>
           <div className="flex gap-4">
             {isLoggedIn ? (
               <>
-                <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                {/* <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
                   Profile
-                </button>
+                </button> */}
                 <button 
                   onClick={handleLogout}
                   className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
@@ -695,7 +904,7 @@ Respond ONLY in valid JSON:
           <div className="space-y-6">
                       
             {/* Diagnostic Test Buttons */}
-            <div className="bg-[#1f1f2f] border border-[#2a2a3e] rounded-lg p-6">
+            <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
                   <svg
@@ -857,32 +1066,66 @@ Respond ONLY in valid JSON:
                   PATIENT HISTORY
                 </h2>
               </div>
-              <div className="space-y-3">
-                {patientHistory.map((record, index) => (
-                  <div
-                    key={index}
-                    className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4 hover:border-purple-500/50 transition-colors"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <p className="text-white font-medium">{record.test}</p>
-                        <p className="text-gray-400 text-sm">{record.date}</p>
-                      </div>
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          record.result === "Normal"
-                            ? "bg-green-500/20 text-green-400"
-                            : "bg-yellow-500/20 text-yellow-400"
-                        }`}
-                      >
-                        {record.result}
-                      </span>
-                    </div>
-                    <p className="text-gray-400 text-sm">
-                      Reviewed by: {record.doctor}
-                    </p>
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                {loadingPatientHistory ? (
+                  <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4 text-center text-gray-400">
+                    Loading patient history...
                   </div>
-                ))}
+                ) : patientHistoryData.length === 0 ? (
+                  <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4 text-center text-gray-400">
+                    No patient history available
+                  </div>
+                ) : (
+                  patientHistoryData.map((record, index) => (
+                    <div
+                      key={index}
+                      onClick={() => loadPatientHistory(record)}
+                      className={`bg-[#0f0f1a] border rounded-lg p-4 transition-colors cursor-pointer ${
+                        selectedPatientHistory === record 
+                          ? 'border-purple-500 shadow-lg shadow-purple-500/20' 
+                          : 'border-[#2a2a3e] hover:border-purple-500/50'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="text-white font-medium">{record.test || record.summary || 'Medical Report'}</p>
+                          <p className="text-gray-400 text-sm">
+                            {formatDate(record.date || record.created_at || record.timestamp || new Date().toISOString())}
+                          </p>
+                        </div>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            record.result === "Normal" || 
+                            (record.labComparison && record.labComparison.every((item: any) => item.status === "Normal"))
+                              ? "bg-green-500/20 text-green-400" 
+                              : "bg-yellow-500/20 text-yellow-400"
+                          }`}
+                        >
+                          {record.result || 
+                           (record.labComparison && record.labComparison.every((item: any) => item.status === "Normal") ? "Normal" : "Abnormal")}
+                        </span>
+                      </div>
+                      <p className="text-gray-400 text-sm">
+                        {record.doctor || record.doctor_name || 'Auto-generated Report'}
+                      </p>
+                      {record.summary && (
+                        <p className="text-gray-300 text-sm mt-2 line-clamp-2">
+                          {record.summary}
+                        </p>
+                      )}
+                      {selectedPatientHistory === record && (
+                        <div className="mt-3 pt-3 border-t border-[#2a2a3e]">
+                          <p className="text-purple-400 text-xs font-medium flex items-center gap-1">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Loaded - Click to reload
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 

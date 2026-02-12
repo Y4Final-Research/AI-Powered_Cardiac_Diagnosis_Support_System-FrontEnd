@@ -16,17 +16,17 @@ export default function DoctorPage() {
   const [user, setUser] = useState<any>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<string>('');
+  const [patientHistory, setPatientHistory] = useState<any[]>([]);
+  const [loadingPatientHistory, setLoadingPatientHistory] = useState<boolean>(false);
+  const [selectedPatientHistory, setSelectedPatientHistory] = useState<any>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [patientInfo, setPatientInfo] = useState<any>(null);
   const [labComparison, setLabComparison] = useState<any>(null);
+  const [recommendedTests, setRecommendedTests] = useState<string[] | null>(null);
   const [recommendation, setRecommendation] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [doctorRecommendations, setDoctorRecommendations] = useState<any[]>([]);
-  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
-  const [editingDoctorId, setEditingDoctorId] = useState<string | null>(null);
-  const [editingDoctorText, setEditingDoctorText] = useState<string>('');
   const [submittingRecommendation, setSubmittingRecommendation] = useState(false);
   const [recommendationError, setRecommendationError] = useState('');
   const [recommendationSuccess, setRecommendationSuccess] = useState('');
@@ -82,52 +82,93 @@ export default function DoctorPage() {
     }
   }, [user]);
 
-  // fetch doctor recommendations (dashboard)
-  const fetchDoctorRecommendations = async () => {
-    const accessToken = localStorage.getItem('access_token');
-    if (!accessToken) return;
-
-    try {
-      setLoadingRecommendations(true);
-      const res = await fetch('http://0.0.0.0:8081/api/recommendations/', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          const currentUserId = localStorage.getItem('user_id') || user?.user_id || user?._id || '';
-          const filtered = data.filter((r: any) => String(r.doctor_id) === String(currentUserId));
-          filtered.sort((a: any, b: any) => new Date(b.date || b.created_at || b.created || 0).getTime() - new Date(a.date || a.created_at || a.created || 0).getTime());
-          setDoctorRecommendations(filtered);
-        } else {
-          setDoctorRecommendations([]);
-        }
-      } else {
-        console.error('Failed to fetch recommendations');
-      }
-    } catch (err) {
-      console.error('Error fetching recommendations', err);
-    } finally {
-      setLoadingRecommendations(false);
-    }
-  };
-
   useEffect(() => {
-    if (user) fetchDoctorRecommendations();
-  }, [user]);
+    // Fetch patient history when a patient is selected
+    const fetchPatientHistory = async () => {
+      if (!selectedPatient) {
+        setPatientHistory([]);
+        // Clear analysis results when no patient is selected
+        setTestResult(null);
+        setLabComparison(null);
+        setPatientInfo(null);
+        setRecommendedTests(null);
+        setSelectedPatientHistory(null);
+        return;
+      }
+      
+      const accessToken = localStorage.getItem('access_token');
+      if (!accessToken) return;
 
-  const formatDate = (dateString: string) => {
+      setLoadingPatientHistory(true);
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+        const response = await fetch(`${baseUrl}/api/patient-history?user_id=${selectedPatient}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setPatientHistory(Array.isArray(data) ? data : []);
+        } else {
+          console.error('Failed to fetch patient history');
+          setPatientHistory([]);
+        }
+      } catch (error) {
+        console.error('Error fetching patient history:', error);
+        setPatientHistory([]);
+      } finally {
+        setLoadingPatientHistory(false);
+      }
+    };
+
+    fetchPatientHistory();
+  }, [selectedPatient]);
+
+  // Load patient history data into display sections
+  const loadPatientHistory = (historyItem: any) => {
+    setSelectedPatientHistory(historyItem);
+    
+    // Try to parse analysis_result if it exists
+    let parsedData = null;
     try {
-      const d = new Date(dateString);
-      return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-    } catch {
-      return dateString;
+      if (historyItem.analysis_result) {
+        parsedData = typeof historyItem.analysis_result === 'string' 
+          ? JSON.parse(historyItem.analysis_result) 
+          : historyItem.analysis_result;
+      }
+    } catch (e) {
+      console.error('Error parsing analysis result in loadPatientHistory:', e);
+      parsedData = null;
     }
+    
+    // Load summary into test result
+    const summary = parsedData?.summary || historyItem.summary || 'No summary available';
+    setTestResult(summary);
+    
+    // Load lab comparison data
+    const labComparison = parsedData?.labComparison || historyItem.labComparison || null;
+    if (labComparison) {
+      setLabComparison(labComparison);
+    }
+    
+    // Load patient info
+    const patientInfo = parsedData?.patientInfo || historyItem.patientInfo || null;
+    if (patientInfo) {
+      setPatientInfo(patientInfo);
+    }
+    
+    // Load recommended tests
+    const recommendedTests = parsedData?.recommendedTests || historyItem.recommendedTests || null;
+    if (recommendedTests) {
+      setRecommendedTests(recommendedTests);
+    }
+    
+    // Scroll to top to show the loaded data
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleLogout = () => {
@@ -150,12 +191,12 @@ export default function DoctorPage() {
     }
 
     setUploadedFile(file);
+    setSelectedPatientHistory(null); // Clear selected history when uploading new file
 
     // Preview image
     const reader = new FileReader();
     reader.onload = () => setFilePreview(reader.result as string);
     reader.readAsDataURL(file);
-
     try {
       setTestResult("AI is analyzing your medical document...");
       setLoading(true);
@@ -168,7 +209,7 @@ export default function DoctorPage() {
         fr.readAsDataURL(file);
       });
 
-      // Gemini Prompt
+      // 4️⃣ Gemini Prompt (STRICT JSON RESPONSE)
       const PROMPT = `
 You are a medical document analysis AI.
 
@@ -223,7 +264,34 @@ STEP 4 – SUMMARY
 Short medical-friendly summary.
 DO NOT give a diagnosis.
 
-STEP 5 – OUTPUT
+STEP 5 – RECOMMENDED NEXT TESTS WITH REASONS
+Based on the lab report analysis, recommend what type of tests the patient should do next and explain WHY each test is recommended.
+
+Format each recommendation as: "Test Name - Reason for recommendation"
+
+Guidelines:
+- If abnormalities are found, suggest relevant follow-up tests with explanations:
+  * "ECG - To evaluate heart rhythm abnormalities indicated by elevated troponin levels"
+  * "Echocardiogram - To assess heart structure and function due to abnormal cholesterol ratios"
+  * "CT Scan - To investigate potential organ damage from elevated liver enzymes"
+  * "MRI - To examine soft tissue abnormalities suggested by inflammatory markers"
+  * "Additional Blood Tests - To monitor trending values and confirm initial findings"
+  * "Ultrasound - To visualize organ structure for abnormalities in size or texture"
+  
+- If all values are normal and no follow-up is needed, set recommendedTests to an empty array []
+
+Consider these factors when recommending tests:
+- Patient's age and gender
+- Abnormal lab values and their clinical significance
+- Potential underlying conditions suggested by the results
+- Standard medical protocols for follow-up care
+
+Example outputs:
+- ["ECG - Elevated troponin levels suggest possible cardiac stress"]
+- ["Lipid Panel - Abnormal cholesterol ratio indicates cardiovascular risk"]
+- [] (empty array when no follow-up needed)
+
+STEP 6 – OUTPUT
 Respond ONLY in valid JSON:
 
 {
@@ -242,9 +310,12 @@ Respond ONLY in valid JSON:
   ],
   "extractedJsonGroup1": {},
   "extractedJsonGroup2": {},
-  "summary": string
+  "summary": string,
+  "recommendedTests": string[]
 }
 `;
+
+      // 5️⃣ Call Gemini API
 
       const GEMINI_API_KEY = "AIzaSyDQuyGltx9wlnybVcydbD9h4hDr5VTiW_Q";
 
@@ -298,6 +369,7 @@ Respond ONLY in valid JSON:
       setTestResult(parsed.summary);
       setPatientInfo(parsed.patientInfo);
       setLabComparison(parsed.labComparison);
+      setRecommendedTests(parsed.recommendedTests || []);
       setLoading(false);
     } catch (error: any) {
       console.error("Gemini Error:", error);
@@ -312,6 +384,8 @@ Respond ONLY in valid JSON:
     setTestResult(null);
     setLabComparison(null);
     setPatientInfo(null);
+    setRecommendedTests(null);
+    setSelectedPatientHistory(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -342,8 +416,8 @@ Respond ONLY in valid JSON:
         return;
       }
 
-      const url = `http://0.0.0.0:8081/api/recommendations/`;
-      const response = await fetch(url, {
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+      const response = await fetch(`${baseUrl}/api/recommendations/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -374,94 +448,6 @@ Respond ONLY in valid JSON:
       setSubmittingRecommendation(false);
     }
   };
-
-  const startEditDoctorRec = (rec: any) => {
-    const recId = rec.id || rec._id;
-    setEditingDoctorId(recId);
-    setEditingDoctorText(rec.recommendation || rec.text || '');
-  };
-
-  const cancelEditDoctorRec = () => {
-    setEditingDoctorId(null);
-    setEditingDoctorText('');
-  };
-
-  const saveDoctorRecEdit = async (id: string) => {
-    const accessToken = localStorage.getItem('access_token');
-    if (!accessToken) {
-      setRecommendationError('Not authenticated');
-      return;
-    }
-
-    try {
-      // find patient_id from current list
-      const existing = doctorRecommendations.find((r: any) => (r.id === id) || (r._id === id));
-      const patient_id = existing?.patient_id || existing?.patientId || selectedPatient;
-      if (!patient_id) {
-        setRecommendationError('Missing patient id for update');
-        return;
-      }
-
-      const res = await fetch(`http://0.0.0.0:8081/api/recommendations/${id}/`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ patient_id: patient_id, recommendation: editingDoctorText }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: 'Failed to update' }));
-        setRecommendationError(err.message || 'Failed to update recommendation');
-        return;
-      }
-
-      setRecommendationSuccess('Recommendation updated');
-      cancelEditDoctorRec();
-      await fetchDoctorRecommendations();
-      setTimeout(() => setRecommendationSuccess(''), 3000);
-    } catch (err: any) {
-      console.error('Update error', err);
-      setRecommendationError('Failed to update recommendation');
-    }
-  };
-
-  const deleteDoctorRec = async (id: string) => {
-    if (!window.confirm('Delete this recommendation?')) return;
-    const accessToken = localStorage.getItem('access_token');
-    if (!accessToken) {
-      setRecommendationError('Not authenticated');
-      return;
-    }
-
-    try {
-      const res = await fetch(`http://0.0.0.0:8081/api/recommendations/${id}/`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: 'Failed to delete' }));
-        setRecommendationError(err.message || 'Failed to delete recommendation');
-        return;
-      }
-
-      setRecommendationSuccess('Recommendation deleted');
-      await fetchDoctorRecommendations();
-      setTimeout(() => setRecommendationSuccess(''), 3000);
-    } catch (err: any) {
-      console.error('Delete error', err);
-      setRecommendationError('Failed to delete recommendation');
-    }
-  };
-
-  // patient-specific fetch useEffect removed
-
-  // patient edit/delete helper functions removed (not needed)
 
   if (!user) {
     return (
@@ -557,7 +543,15 @@ Respond ONLY in valid JSON:
             <select
               id="patient-select"
               value={selectedPatient}
-              onChange={(e) => setSelectedPatient(e.target.value)}
+              onChange={(e) => {
+                // Clear previous analysis results when changing patients
+                setTestResult(null);
+                setLabComparison(null);
+                setPatientInfo(null);
+                setRecommendedTests(null);
+                setSelectedPatientHistory(null);
+                setSelectedPatient(e.target.value);
+              }}
               className="w-full bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
             >
               <option value="">-- Select a patient --</option>
@@ -568,6 +562,120 @@ Respond ONLY in valid JSON:
               ))}
             </select>
           </div>
+
+          {/* Patient History Section */}
+          {selectedPatient && (
+            <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6 mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                  <svg
+                    className="w-6 h-6 text-purple-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+                <h2 className="text-xl font-bold text-white">PATIENT HISTORY</h2>
+              </div>
+              
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                {loadingPatientHistory ? (
+                  <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4 text-center text-gray-400">
+                    Loading patient history...
+                  </div>
+                ) : patientHistory.length === 0 ? (
+                  <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4 text-center text-gray-400">
+                    No patient history available
+                  </div>
+                ) : (
+                  patientHistory.map((history, index) => {
+                    // Parse the analysis_result to get patient info
+                    let patientInfo = null;
+                    let labComparison = null;
+                    let summary = '';
+                    
+                    try {
+                      // Check if analysis_result exists and is not null/undefined
+                      if (history.analysis_result) {
+                        const parsedResult = typeof history.analysis_result === 'string' 
+                          ? JSON.parse(history.analysis_result) 
+                          : history.analysis_result;
+                        
+                        patientInfo = parsedResult?.patientInfo || null;
+                        labComparison = parsedResult?.labComparison || null;
+                        summary = parsedResult?.summary || '';
+                      }
+                    } catch (e) {
+                      console.error('Error parsing analysis result:', e);
+                      // Set defaults if parsing fails
+                      patientInfo = null;
+                      labComparison = null;
+                      summary = '';
+                    }
+                    
+                    return (
+                      <div
+                        key={history.id || index}
+                        onClick={() => loadPatientHistory(history)}
+                        className={`bg-[#0f0f1a] border rounded-lg p-4 transition-colors cursor-pointer ${
+                          selectedPatientHistory === history 
+                            ? 'border-purple-500 shadow-lg shadow-purple-500/20' 
+                            : 'border-[#2a2a3e] hover:border-purple-500/50'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <p className="text-white font-medium">{summary || 'Medical Report'}</p>
+                            <p className="text-gray-400 text-sm">
+                              {new Date(history.created_at || history.timestamp || '').toLocaleString()}
+                            </p>
+                          </div>
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              labComparison && labComparison.length > 0 && labComparison.every((item: any) => item.status === 'Normal')
+                                ? 'bg-green-500/20 text-green-400' 
+                                : 'bg-yellow-500/20 text-yellow-400'
+                            }`}
+                          >
+                            {labComparison && labComparison.length > 0 && labComparison.every((item: any) => item.status === 'Normal') 
+                              ? 'Normal' 
+                              : 'Abnormal'}
+                          </span>
+                        </div>
+                        <p className="text-gray-400 text-sm">
+                          {patientInfo 
+                            ? `Age: ${patientInfo.age || 'N/A'}, Gender: ${patientInfo.gender || 'N/A'}` 
+                            : 'Auto-generated Report'}
+                        </p>
+                        {summary && (
+                          <p className="text-gray-300 text-sm mt-2 line-clamp-2">
+                            {summary}
+                          </p>
+                        )}
+                        {selectedPatientHistory === history && (
+                          <div className="mt-3 pt-3 border-t border-[#2a2a3e]">
+                            <p className="text-purple-400 text-xs font-medium flex items-center gap-1">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Loaded - Click to reload
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Image Upload */}
           {!uploadedFile ? (
@@ -671,60 +779,128 @@ Respond ONLY in valid JSON:
                   <p className="text-blue-400">Analyzing medical document...</p>
                 </div>
               )}
+            </div>
+          )}
 
-              {/* Test Result */}
-              {testResult && !loading && (
-                <div className="bg-[#0f0f1a] border border-blue-500/30 rounded-lg p-4">
-                  <h3 className="text-white font-semibold mb-2">Analysis Result</h3>
-                  <p className="text-gray-300 leading-relaxed">{testResult}</p>
-                </div>
-              )}
+          {/* Test Result - Always visible when data exists */}
+          {testResult && !loading && (
+            <div className="bg-[#0f0f1a] border border-blue-500/30 rounded-lg p-4">
+              <h3 className="text-white font-semibold mb-2">Analysis Result</h3>
+              <p className="text-gray-300 leading-relaxed">{testResult}</p>
+            </div>
+          )}
 
-              {/* Lab Comparison Table */}
-              {labComparison && labComparison.length > 0 && (
-                <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4">
-                  <h3 className="text-white font-semibold mb-4">Lab Comparison</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-400">
-                      <thead className="text-xs text-gray-300 uppercase bg-[#1a1a2e] border-b border-[#2a2a3e]">
-                        <tr>
-                          <th scope="col" className="px-4 py-3">Test</th>
-                          <th scope="col" className="px-4 py-3">Actual Value</th>
-                          <th scope="col" className="px-4 py-3">Normal Range</th>
-                          <th scope="col" className="px-4 py-3">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {labComparison.map((item: any, index: number) => (
-                          <tr
-                            key={index}
-                            className="border-b border-[#2a2a3e] hover:bg-[#202030] transition-colors"
+          {/* Lab Comparison Table - Always visible when data exists */}
+          {labComparison && labComparison.length > 0 && (
+            <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4">
+              <h3 className="text-white font-semibold mb-4">Lab Comparison</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left text-gray-400">
+                  <thead className="text-xs text-gray-300 uppercase bg-[#1a1a2e] border-b border-[#2a2a3e]">
+                    <tr>
+                      <th scope="col" className="px-4 py-3">Test</th>
+                      <th scope="col" className="px-4 py-3">Actual Value</th>
+                      <th scope="col" className="px-4 py-3">Normal Range</th>
+                      <th scope="col" className="px-4 py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {labComparison.map((item: any, index: number) => (
+                      <tr
+                        key={index}
+                        className="border-b border-[#2a2a3e] hover:bg-[#202030] transition-colors"
+                      >
+                        <td className="px-4 py-3 font-medium text-white">{item.test}</td>
+                        <td className="px-4 py-3">
+                          <span className="px-2 py-1 bg-[#1a1a2e] rounded text-white">
+                            {item.actualValue}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">{item.normalRange}</td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              item.status === 'Normal'
+                                ? 'bg-green-500/20 text-green-400'
+                                : item.status === 'High'
+                                ? 'bg-red-500/20 text-red-400'
+                                : 'bg-yellow-500/20 text-yellow-400'
+                            }`}
                           >
-                            <td className="px-4 py-3 font-medium text-white">{item.test}</td>
-                            <td className="px-4 py-3">
-                              <span className="px-2 py-1 bg-[#1a1a2e] rounded text-white">
-                                {item.actualValue}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">{item.normalRange}</td>
-                            <td className="px-4 py-3">
-                              <span
-                                className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                  item.status === 'Normal'
-                                    ? 'bg-green-500/20 text-green-400'
-                                    : item.status === 'High'
-                                    ? 'bg-red-500/20 text-red-400'
-                                    : 'bg-yellow-500/20 text-yellow-400'
-                                }`}
-                              >
-                                {item.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                            {item.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Recommended Next Tests Section - Always visible when data exists */}
+          {recommendedTests !== null && (
+            <div className="bg-[#0f0f1a] border border-purple-500/30 rounded-lg p-4">
+              <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+                <svg
+                  className="w-5 h-5 text-purple-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                  />
+                </svg>
+                Recommended Next Tests
+              </h3>
+              {recommendedTests.length === 0 ? (
+                <div className="text-center py-4">
+                  <div className="flex items-center justify-center mb-2">
+                    <svg
+                      className="w-10 h-10 text-green-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
                   </div>
+                  <p className="text-green-400 font-medium">
+                    No Additional Tests Required
+                  </p>
+                  <p className="text-gray-400 text-sm mt-1">
+                    Based on the lab report analysis, all values are within normal range. No follow-up tests are needed at this time.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-gray-300 text-sm">
+                    Based on the lab report analysis, the following tests are recommended:
+                  </p>
+                  <ul className="space-y-2">
+                    {recommendedTests.map((test, index) => (
+                      <li
+                        key={index}
+                        className="flex items-start gap-3 p-3 bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg hover:border-purple-500/50 transition-colors"
+                      >
+                        <div className="w-6 h-6 bg-purple-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-purple-400 text-xs font-bold">
+                            {index + 1}
+                          </span>
+                        </div>
+                        <p className="text-white font-medium">{test}</p>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>
@@ -781,58 +957,6 @@ Respond ONLY in valid JSON:
             </form>
           </div>
         )}
-
-        {/* Doctor Recommendations (dashboard) */}
-        <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-cyan-500/20 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold text-white">DOCTOR RECOMMENDATIONS</h2>
-          </div>
-          <div className="space-y-4">
-            {loadingRecommendations ? (
-              <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4 text-center text-gray-400">Loading recommendations...</div>
-            ) : doctorRecommendations.length === 0 ? (
-              <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4 text-center text-gray-400">No recommendations available yet</div>
-            ) : (
-              doctorRecommendations.map((rec) => {
-                const recId = rec.id || rec._id;
-                return (
-                  <div key={recId} className="bg-[#0f0f1a] border border-cyan-500/30 rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <p className="text-cyan-400 font-semibold">{rec.doctor_name || rec.created_by_name || 'Doctor'}</p>
-                        <p className="text-gray-300 text-sm">Patient: {rec.patient_name || rec.patientName || rec.patient || 'Patient'}</p>
-                        <p className="text-gray-400 text-sm">{formatDate(rec.date || rec.created_at || rec.created || '')}</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {editingDoctorId === recId ? (
-                          <>
-                            <button type="button" onClick={() => saveDoctorRecEdit(recId)} className="text-green-400">Save</button>
-                            <button type="button" onClick={cancelEditDoctorRec} className="text-yellow-400">Cancel</button>
-                          </>
-                        ) : (
-                          <>
-                            <button type="button" onClick={() => startEditDoctorRec(rec)} className="text-blue-400">Edit</button>
-                            <button type="button" onClick={() => deleteDoctorRec(recId)} className="text-red-400">Delete</button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    {editingDoctorId === recId ? (
-                      <textarea value={editingDoctorText} onChange={(e) => setEditingDoctorText(e.target.value)} className="w-full bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-2 text-white" rows={4} />
-                    ) : (
-                      <p className="text-gray-300 leading-relaxed">{rec.recommendation || rec.text}</p>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
 
         {/* Doctor Information */}
         <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
