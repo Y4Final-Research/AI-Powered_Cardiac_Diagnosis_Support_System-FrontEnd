@@ -1,5 +1,8 @@
 "use client";
 import { useState, useEffect } from 'react';
+import Header from "@/components/header";
+import SideNavigation from "@/components/side-navigation";
+
 interface FormData {
   Age: string;
   Gender: string;
@@ -34,6 +37,10 @@ export default function DiabeticPage() {
   const [loading, setLoading] = useState(false);
   const [fetchingData, setFetchingData] = useState(true);
   
+  // Auth state for header
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState<string | undefined>("User");
+
   // Fetch data when component mounts
   useEffect(() => {
     const fetchData = async () => {
@@ -84,6 +91,26 @@ export default function DiabeticPage() {
     fetchData();
   }, []);
   
+  useEffect(() => {
+    // Check login state and user name from localStorage
+    const token = localStorage.getItem("access_token");
+    setIsLoggedIn(!!token);
+    const name = localStorage.getItem("user_name");
+    if (name) setUserName(name);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("user_id");
+    localStorage.removeItem("user_name");
+    setIsLoggedIn(false);
+    // Optionally redirect or reload
+  };
+
+  const handleLogin = () => {
+    // Implement login logic or redirect to login page
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData({
@@ -197,196 +224,196 @@ export default function DiabeticPage() {
   };
   
   return (
-    <div className="min-h-screen bg-[#0a0a0f] p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Diabetic Test</h1>
-          <p className="text-gray-400">Enter patient data for diabetic risk assessment</p>
-          {fetchingData && (
-            <div className="mt-4 text-blue-400 flex items-center justify-center gap-2">
-              <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-              <span>Loading your previous data...</span>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+      <Header
+        isLoggedIn={isLoggedIn}
+        userName={userName}
+        onLogout={handleLogout}
+        onLogin={handleLogin}
+      />
+      <div className="flex">
+        <SideNavigation />
+        <main className="flex-1 lg:ml-64 pt-6 pb-20 px-6">
+          <div className="max-w-4xl mx-auto space-y-6">
+            <div className="bg-white border border-cyan-400/20 rounded-xl p-8 shadow-md">
+              <div className="text-center mb-8">
+                <h1 className="text-3xl font-bold text-slate-900 mb-2">Diabetic Test</h1>
+                <p className="text-slate-600">Enter patient data for diabetic risk assessment</p>
+                {fetchingData && (
+                  <div className="mt-4 text-blue-400 flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                    <span>Loading your previous data...</span>
+                  </div>
+                )}
+              </div>
+              <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="Age" className="block text-sm font-medium text-gray-700 mb-1">
+                    Age <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="Age"
+                    name="Age"
+                    value={formData.Age}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-2 bg-slate-50 border rounded-lg ${errors.Age ? 'border-red-500' : 'border-cyan-200'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    placeholder="Enter age"
+                  />
+                  {errors.Age && <p className="mt-1 text-sm text-red-400">{errors.Age}</p>}
+                </div>
+                <div>
+                  <label htmlFor="Gender" className="block text-sm font-medium text-gray-700 mb-1">
+                    Gender <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    id="Gender"
+                    name="Gender"
+                    value={formData.Gender}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-2 bg-slate-50 border rounded-lg ${errors.Gender ? 'border-red-500' : 'border-cyan-200'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  >
+                    <option value="">Select gender</option>
+                    <option value="M">Male (M)</option>
+                    <option value="F">Female (F)</option>
+                  </select>
+                  {errors.Gender && <p className="mt-1 text-sm text-red-400">{errors.Gender}</p>}
+                </div>
+                <div>
+                  <label htmlFor="BMI" className="block text-sm font-medium text-gray-700 mb-1">
+                    BMI <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="BMI"
+                    name="BMI"
+                    value={formData.BMI}
+                    onChange={handleChange}
+                    step="0.1"
+                    className={`w-full px-4 py-2 bg-slate-50 border rounded-lg ${errors.BMI ? 'border-red-500' : 'border-cyan-200'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    placeholder="Enter BMI"
+                  />
+                  {errors.BMI && <p className="mt-1 text-sm text-red-400">{errors.BMI}</p>}
+                </div>
+                <div>
+                  <label htmlFor="Chol" className="block text-sm font-medium text-gray-700 mb-1">
+                    Cholesterol <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="Chol"
+                    name="Chol"
+                    value={formData.Chol}
+                    onChange={handleChange}
+                    step="0.1"
+                    className={`w-full px-4 py-2 bg-slate-50 border rounded-lg ${errors.Chol ? 'border-red-500' : 'border-cyan-200'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    placeholder="Enter cholesterol level"
+                  />
+                  {errors.Chol && <p className="mt-1 text-sm text-red-400">{errors.Chol}</p>}
+                </div>
+                <div>
+                  <label htmlFor="TG" className="block text-sm font-medium text-gray-700 mb-1">
+                    Triglycerides (TG) <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="TG"
+                    name="TG"
+                    value={formData.TG}
+                    onChange={handleChange}
+                    step="0.1"
+                    className={`w-full px-4 py-2 bg-slate-50 border rounded-lg ${errors.TG ? 'border-red-500' : 'border-cyan-200'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    placeholder="Enter triglycerides level"
+                  />
+                  {errors.TG && <p className="mt-1 text-sm text-red-400">{errors.TG}</p>}
+                </div>
+                <div>
+                  <label htmlFor="HDL" className="block text-sm font-medium text-gray-700 mb-1">
+                    HDL <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="HDL"
+                    name="HDL"
+                    value={formData.HDL}
+                    onChange={handleChange}
+                    step="0.1"
+                    className={`w-full px-4 py-2 bg-slate-50 border rounded-lg ${errors.HDL ? 'border-red-500' : 'border-cyan-200'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    placeholder="Enter HDL level"
+                  />
+                  {errors.HDL && <p className="mt-1 text-sm text-red-400">{errors.HDL}</p>}
+                </div>
+                <div>
+                  <label htmlFor="LDL" className="block text-sm font-medium text-gray-700 mb-1">
+                    LDL <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="LDL"
+                    name="LDL"
+                    value={formData.LDL}
+                    onChange={handleChange}
+                    step="0.1"
+                    className={`w-full px-4 py-2 bg-slate-50 border rounded-lg ${errors.LDL ? 'border-red-500' : 'border-cyan-200'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    placeholder="Enter LDL level"
+                  />
+                  {errors.LDL && <p className="mt-1 text-sm text-red-400">{errors.LDL}</p>}
+                </div>
+                <div>
+                  <label htmlFor="Cr" className="block text-sm font-medium text-gray-700 mb-1">
+                    Creatinine (Cr) <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="Cr"
+                    name="Cr"
+                    value={formData.Cr}
+                    onChange={handleChange}
+                    step="0.1"
+                    className={`w-full px-4 py-2 bg-slate-50 border rounded-lg ${errors.Cr ? 'border-red-500' : 'border-cyan-200'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    placeholder="Enter creatinine level"
+                  />
+                  {errors.Cr && <p className="mt-1 text-sm text-red-400">{errors.Cr}</p>}
+                </div>
+                <div>
+                  <label htmlFor="BUN" className="block text-sm font-medium text-gray-700 mb-1">
+                    BUN <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="BUN"
+                    name="BUN"
+                    value={formData.BUN}
+                    onChange={handleChange}
+                    step="0.1"
+                    className={`w-full px-4 py-2 bg-slate-50 border rounded-lg ${errors.BUN ? 'border-red-500' : 'border-cyan-200'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    placeholder="Enter BUN level"
+                  />
+                  {errors.BUN && <p className="mt-1 text-sm text-red-400">{errors.BUN}</p>}
+                </div>
+                <div className="md:col-span-2">
+                  <button
+                    type="submit"
+                    disabled={loading || fetchingData}
+                    className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {fetchingData ? 'Loading data...' : loading ? 'Submitting...' : 'Submit Diabetic Test'}
+                  </button>
+                </div>
+              </form>
             </div>
-          )}
-        </div>
-        
-        <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6 mb-8">
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="Age" className="block text-sm font-medium text-gray-300 mb-1">
-                Age <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="number"
-                id="Age"
-                name="Age"
-                value={formData.Age}
-                onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.Age ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                placeholder="Enter age"
-              />
-              {errors.Age && <p className="mt-1 text-sm text-red-400">{errors.Age}</p>}
-            </div>
-            
-            <div>
-              <label htmlFor="Gender" className="block text-sm font-medium text-gray-300 mb-1">
-                Gender <span className="text-red-400">*</span>
-              </label>
-              <select
-                id="Gender"
-                name="Gender"
-                value={formData.Gender}
-                onChange={handleChange}
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.Gender ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-              >
-                <option value="">Select gender</option>
-                <option value="M">Male (M)</option>
-                <option value="F">Female (F)</option>
-              </select>
-              {errors.Gender && <p className="mt-1 text-sm text-red-400">{errors.Gender}</p>}
-            </div>
-            
-            <div>
-              <label htmlFor="BMI" className="block text-sm font-medium text-gray-300 mb-1">
-                BMI <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="number"
-                id="BMI"
-                name="BMI"
-                value={formData.BMI}
-                onChange={handleChange}
-                step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.BMI ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                placeholder="Enter BMI"
-              />
-              {errors.BMI && <p className="mt-1 text-sm text-red-400">{errors.BMI}</p>}
-            </div>
-            
-            <div>
-              <label htmlFor="Chol" className="block text-sm font-medium text-gray-300 mb-1">
-                Cholesterol <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="number"
-                id="Chol"
-                name="Chol"
-                value={formData.Chol}
-                onChange={handleChange}
-                step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.Chol ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                placeholder="Enter cholesterol level"
-              />
-              {errors.Chol && <p className="mt-1 text-sm text-red-400">{errors.Chol}</p>}
-            </div>
-            
-            <div>
-              <label htmlFor="TG" className="block text-sm font-medium text-gray-300 mb-1">
-                Triglycerides (TG) <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="number"
-                id="TG"
-                name="TG"
-                value={formData.TG}
-                onChange={handleChange}
-                step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.TG ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                placeholder="Enter triglycerides level"
-              />
-              {errors.TG && <p className="mt-1 text-sm text-red-400">{errors.TG}</p>}
-            </div>
-            
-            <div>
-              <label htmlFor="HDL" className="block text-sm font-medium text-gray-300 mb-1">
-                HDL <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="number"
-                id="HDL"
-                name="HDL"
-                value={formData.HDL}
-                onChange={handleChange}
-                step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.HDL ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                placeholder="Enter HDL level"
-              />
-              {errors.HDL && <p className="mt-1 text-sm text-red-400">{errors.HDL}</p>}
-            </div>
-            
-            <div>
-              <label htmlFor="LDL" className="block text-sm font-medium text-gray-300 mb-1">
-                LDL <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="number"
-                id="LDL"
-                name="LDL"
-                value={formData.LDL}
-                onChange={handleChange}
-                step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.LDL ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                placeholder="Enter LDL level"
-              />
-              {errors.LDL && <p className="mt-1 text-sm text-red-400">{errors.LDL}</p>}
-            </div>
-            
-            <div>
-              <label htmlFor="Cr" className="block text-sm font-medium text-gray-300 mb-1">
-                Creatinine (Cr) <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="number"
-                id="Cr"
-                name="Cr"
-                value={formData.Cr}
-                onChange={handleChange}
-                step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.Cr ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                placeholder="Enter creatinine level"
-              />
-              {errors.Cr && <p className="mt-1 text-sm text-red-400">{errors.Cr}</p>}
-            </div>
-            
-            <div>
-              <label htmlFor="BUN" className="block text-sm font-medium text-gray-300 mb-1">
-                BUN <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="number"
-                id="BUN"
-                name="BUN"
-                value={formData.BUN}
-                onChange={handleChange}
-                step="0.1"
-                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.BUN ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                placeholder="Enter BUN level"
-              />
-              {errors.BUN && <p className="mt-1 text-sm text-red-400">{errors.BUN}</p>}
-            </div>
-            
-            <div className="md:col-span-2">
-              <button
-                type="submit"
-                disabled={loading || fetchingData}
-                className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {fetchingData ? 'Loading data...' : loading ? 'Submitting...' : 'Submit Diabetic Test'}
-              </button>
-            </div>
-          </form>
-        </div>
-        
-        {result && (
-          <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
-            <h2 className="text-xl font-bold text-white mb-4">Test Results</h2>
-            <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4">
-              <pre className="text-white whitespace-pre-wrap break-words">
-                {typeof result === 'object' ? JSON.stringify(result, null, 2) : result}
-              </pre>
-            </div>
+            {result && (
+              <div className="bg-white border border-cyan-400/20 rounded-xl p-6 shadow-md">
+                <h2 className="text-xl font-bold text-slate-900 mb-4">Test Results</h2>
+                <div className="bg-slate-50 border border-cyan-200 rounded-lg p-4">
+                  <pre className="text-slate-800 whitespace-pre-wrap break-words">
+                    {typeof result === 'object' ? JSON.stringify(result, null, 2) : result}
+                  </pre>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </main>
       </div>
     </div>
   );
