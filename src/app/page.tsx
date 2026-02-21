@@ -4,6 +4,22 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+// Chart imports
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler } from 'chart.js';
+import { Line, Bar } from 'react-chartjs-2';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
+
 interface Recommendation {
   id: string;
   doctor_id: string;
@@ -29,6 +45,7 @@ export default function Home() {
   const [patientHistoryData, setPatientHistoryData] = useState<any[]>([]);
   const [loadingPatientHistory, setLoadingPatientHistory] = useState(false);
   const [selectedPatientHistory, setSelectedPatientHistory] = useState<any>(null);
+  const [showCharts, setShowCharts] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -182,7 +199,7 @@ Respond ONLY in valid JSON:
 `;
 
       // 5️⃣ Call Gemini API
-      const GEMINI_API_KEY = "AIzaSyDQuyGltx9wlnybVcydbD9h4hDr5VTiW_Q";
+      const GEMINI_API_KEY = "AIzaSyAcR4BlYiehrDNcAkzAdwFxv6BCSLWq97E";
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -488,6 +505,7 @@ Respond ONLY in valid JSON:
             new Date(a.date || a.created_at || a.timestamp).getTime()
           );
           setPatientHistoryData(sortedData);
+          console.log('Patient history data:', sortedData);
         } else {
           console.error('Failed to fetch patient history');
         }
@@ -513,6 +531,128 @@ Respond ONLY in valid JSON:
     });
   };
 
+  // Generate chart data from patient history
+  const generateLabTrendData = () => {
+    if (!patientHistoryData || patientHistoryData.length === 0) return null;
+    
+    // Sort history by date to show chronological trend
+    const sortedHistory = [...patientHistoryData].sort((a, b) => 
+      new Date(a.createdAt || a.date || a.created_at || a.timestamp).getTime() - 
+      new Date(b.createdAt || b.date || b.created_at || b.timestamp).getTime()
+    );
+    
+    // Extract lab values for key metrics
+    const labels = sortedHistory.map(record => {
+      const date = new Date(record.createdAt || record.date || record.created_at || record.timestamp);
+      return `${date.getDate()}/${date.getMonth() + 1}`; // DD/MM format
+    });
+    
+    // Prepare datasets for common lab values
+    const totalCholesterolData = sortedHistory.map(record => {
+      const lab = record.labComparison?.find((item: any) => 
+        item.test.toLowerCase().includes('total cholesterol')
+      );
+      return lab ? lab.actualValue : null;
+    });
+    
+    const ldlData = sortedHistory.map(record => {
+      const lab = record.labComparison?.find((item: any) => 
+        item.test.toLowerCase().includes('ldl')
+      );
+      return lab ? lab.actualValue : null;
+    });
+    
+    const hdlData = sortedHistory.map(record => {
+      const lab = record.labComparison?.find((item: any) => 
+        item.test.toLowerCase().includes('hdl')
+      );
+      return lab ? lab.actualValue : null;
+    });
+    
+    const tgData = sortedHistory.map(record => {
+      const lab = record.labComparison?.find((item: any) => 
+        item.test.toLowerCase().includes('triglycerides') || item.test.toLowerCase().includes('tg')
+      );
+      return lab ? lab.actualValue : null;
+    });
+    
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Total Cholesterol',
+          data: totalCholesterolData,
+          borderColor: 'rgb(75, 192, 192)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          tension: 0.1,
+        },
+        {
+          label: 'LDL Cholesterol',
+          data: ldlData,
+          borderColor: 'rgb(255, 99, 132)',
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          tension: 0.1,
+        },
+        {
+          label: 'HDL Cholesterol',
+          data: hdlData,
+          borderColor: 'rgb(54, 162, 235)',
+          backgroundColor: 'rgba(54, 162, 235, 0.2)',
+          tension: 0.1,
+        },
+        {
+          label: 'Triglycerides',
+          data: tgData,
+          borderColor: 'rgb(255, 205, 86)',
+          backgroundColor: 'rgba(255, 205, 86, 0.2)',
+          tension: 0.1,
+        },
+      ],
+    };
+  };
+  
+  const generateNumericChartData = () => {
+    if (!patientHistoryData || patientHistoryData.length === 0) return null;
+    
+    // Sort history by date
+    const sortedHistory = [...patientHistoryData].sort((a, b) => 
+      new Date(a.createdAt || b.date || b.created_at || b.timestamp).getTime() - 
+      new Date(b.createdAt || b.date || b.created_at || b.timestamp).getTime()
+    );
+    
+    const labels = sortedHistory.map(record => {
+      const date = new Date(record.createdAt || record.date || record.created_at || record.timestamp);
+      return `${date.getDate()}/${date.getMonth() + 1}`; // DD/MM format
+    });
+    
+    // Extract numeric values from extractedJsonGroup1
+    const ageData = sortedHistory.map(record => record.extractedJsonGroup1?.Age || null);
+    const bmiData = sortedHistory.map(record => record.extractedJsonGroup1?.BMI || null);
+    
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Age',
+          data: ageData,
+          borderColor: 'rgb(153, 102, 255)',
+          backgroundColor: 'rgba(153, 102, 255, 0.2)',
+          tension: 0.1,
+        },
+        {
+          label: 'BMI',
+          data: bmiData,
+          borderColor: 'rgb(255, 159, 64)',
+          backgroundColor: 'rgba(255, 159, 64, 0.2)',
+          tension: 0.1,
+        }
+      ],
+    };
+  };
+  
+  const labTrendData = generateLabTrendData();
+  const numericData = generateNumericChartData();
+  
   // Handle logout
   const handleLogout = () => {
     localStorage.removeItem('access_token');
@@ -1065,68 +1205,209 @@ Respond ONLY in valid JSON:
                 <h2 className="text-xl font-bold text-white">
                   PATIENT HISTORY
                 </h2>
+                <button 
+                  onClick={() => setShowCharts(!showCharts)}
+                  className="ml-auto px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm transition-colors"
+                >
+                  {showCharts ? 'Show List' : 'Show Charts'}
+                </button>
               </div>
-              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-                {loadingPatientHistory ? (
-                  <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4 text-center text-gray-400">
-                    Loading patient history...
-                  </div>
-                ) : patientHistoryData.length === 0 ? (
-                  <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4 text-center text-gray-400">
-                    No patient history available
-                  </div>
-                ) : (
-                  patientHistoryData.map((record, index) => (
-                    <div
-                      key={index}
-                      onClick={() => loadPatientHistory(record)}
-                      className={`bg-[#0f0f1a] border rounded-lg p-4 transition-colors cursor-pointer ${
-                        selectedPatientHistory === record 
-                          ? 'border-purple-500 shadow-lg shadow-purple-500/20' 
-                          : 'border-[#2a2a3e] hover:border-purple-500/50'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <p className="text-white font-medium">{record.test || record.summary || 'Medical Report'}</p>
-                          <p className="text-gray-400 text-sm">
-                            {formatDate(record.date || record.created_at || record.timestamp || new Date().toISOString())}
-                          </p>
-                        </div>
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            record.result === "Normal" || 
-                            (record.labComparison && record.labComparison.every((item: any) => item.status === "Normal"))
-                              ? "bg-green-500/20 text-green-400" 
-                              : "bg-yellow-500/20 text-yellow-400"
-                          }`}
-                        >
-                          {record.result || 
-                           (record.labComparison && record.labComparison.every((item: any) => item.status === "Normal") ? "Normal" : "Abnormal")}
-                        </span>
+              
+              {showCharts ? (
+                <div className="space-y-6">
+                  {/* Lab Trends Chart */}
+                  {labTrendData && (
+                    <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4">
+                      <h3 className="text-white font-semibold mb-3">Lab Values Trend</h3>
+                      <div className="h-64">
+                        <Line 
+                          data={labTrendData} 
+                          options={{
+                            responsive: true,
+                            plugins: {
+                              legend: {
+                                position: 'top' as const,
+                                labels: {
+                                  color: '#cbd5e1',
+                                  font: {
+                                    size: 12
+                                  }
+                                }
+                              },
+                              title: {
+                                display: false,
+                                text: 'Lab Values Over Time',
+                                color: '#e2e8f0',
+                                font: {
+                                  size: 14,
+                                  weight: 'bold'
+                                }
+                              }
+                            },
+                            scales: {
+                              y: {
+                                beginAtZero: false,
+                                ticks: {
+                                  color: '#94a3b8',
+                                  font: {
+                                    size: 11
+                                  }
+                                },
+                                grid: {
+                                  color: '#2d3748'
+                                }
+                              },
+                              x: {
+                                ticks: {
+                                  color: '#94a3b8',
+                                  font: {
+                                    size: 11
+                                  }
+                                },
+                                grid: {
+                                  color: '#2d3748'
+                                }
+                              }
+                            }
+                          }}
+                        />
                       </div>
-                      <p className="text-gray-400 text-sm">
-                        {record.doctor || record.doctor_name || 'Auto-generated Report'}
-                      </p>
-                      {record.summary && (
-                        <p className="text-gray-300 text-sm mt-2 line-clamp-2">
-                          {record.summary}
-                        </p>
-                      )}
-                      {selectedPatientHistory === record && (
-                        <div className="mt-3 pt-3 border-t border-[#2a2a3e]">
-                          <p className="text-purple-400 text-xs font-medium flex items-center gap-1">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            Loaded - Click to reload
-                          </p>
-                        </div>
-                      )}
                     </div>
-                  ))
-                )}
-              </div>
+                  )}
+                  
+                  {/* Numeric Data Chart */}
+                  {numericData && (
+                    <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4">
+                      <h3 className="text-white font-semibold mb-3">Patient Metrics Trend</h3>
+                      <div className="h-64">
+                        <Line 
+                          data={numericData} 
+                          options={{
+                            responsive: true,
+                            plugins: {
+                              legend: {
+                                position: 'top' as const,
+                                labels: {
+                                  color: '#cbd5e1',
+                                  font: {
+                                    size: 12
+                                  }
+                                }
+                              },
+                              title: {
+                                display: false,
+                                text: 'Patient Metrics Over Time',
+                                color: '#e2e8f0',
+                                font: {
+                                  size: 14,
+                                  weight: 'bold'
+                                }
+                              }
+                            },
+                            scales: {
+                              y: {
+                                beginAtZero: false,
+                                ticks: {
+                                  color: '#94a3b8',
+                                  font: {
+                                    size: 11
+                                  }
+                                },
+                                grid: {
+                                  color: '#2d3748'
+                                }
+                              },
+                              x: {
+                                ticks: {
+                                  color: '#94a3b8',
+                                  font: {
+                                    size: 11
+                                  }
+                                },
+                                grid: {
+                                  color: '#2d3748'
+                                }
+                              }
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Chart Controls */}
+                  <div className="text-center pt-2">
+                    <button 
+                      onClick={() => setShowCharts(false)}
+                      className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                    >
+                      Back to List View
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                  {loadingPatientHistory ? (
+                    <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4 text-center text-gray-400">
+                      Loading patient history...
+                    </div>
+                  ) : patientHistoryData.length === 0 ? (
+                    <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4 text-center text-gray-400">
+                      No patient history available
+                    </div>
+                  ) : (
+                    patientHistoryData.map((record, index) => (
+                      <div
+                        key={index}
+                        onClick={() => loadPatientHistory(record)}
+                        className={`bg-[#0f0f1a] border rounded-lg p-4 transition-colors cursor-pointer ${
+                          selectedPatientHistory === record 
+                            ? 'border-purple-500 shadow-lg shadow-purple-500/20' 
+                            : 'border-[#2a2a3e] hover:border-purple-500/50'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <p className="text-white font-medium">{record.test || record.summary || 'Medical Report'}</p>
+                            <p className="text-gray-400 text-sm">
+                              {formatDate(record.date || record.created_at || record.timestamp || new Date().toISOString())}
+                            </p>
+                          </div>
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              record.result === "Normal" || 
+                              (record.labComparison && record.labComparison.every((item: any) => item.status === "Normal"))
+                                ? "bg-green-500/20 text-green-400" 
+                                : "bg-yellow-500/20 text-yellow-400"
+                            }`}
+                          >
+                            {record.result || 
+                             (record.labComparison && record.labComparison.every((item: any) => item.status === "Normal") ? "Normal" : "Abnormal")}
+                          </span>
+                        </div>
+                        <p className="text-gray-400 text-sm">
+                          {record.doctor || record.doctor_name || 'Auto-generated Report'}
+                        </p>
+                        {record.summary && (
+                          <p className="text-gray-300 text-sm mt-2 line-clamp-2">
+                            {record.summary}
+                          </p>
+                        )}
+                        {selectedPatientHistory === record && (
+                          <div className="mt-3 pt-3 border-t border-[#2a2a3e]">
+                            <p className="text-purple-400 text-xs font-medium flex items-center gap-1">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Loaded - Click to reload
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
 
           
