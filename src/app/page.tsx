@@ -1,1419 +1,360 @@
-"use client";
+'use client';
 
-import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Link from 'next/link';
+import { ArrowRight, Heart, Zap, Brain, BarChart3, CheckCircle } from 'lucide-react';
 
-// Chart imports
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler } from 'chart.js';
-import { Line, Bar } from 'react-chartjs-2';
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
-
-interface Recommendation {
-  id: string;
-  doctor_id: string;
-  doctor_name: string;
-  patient_id: string;
-  patient_name: string;
-  date: string;
-  recommendation: string;
-}
-
-export default function Home() {
-  const router = useRouter();
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [filePreview, setFilePreview] = useState<string | null>(null);
-  const [testResult, setTestResult] = useState<string | null>(null);
-  const [patientInfo, setPatientInfo] = useState<any>(null);
-  const [labComparison, setLabComparison] = useState<any>(null);
-  const [jsonGroup1, setJsonGroup1] = useState<any>(null);
-  const [jsonGroup2, setJsonGroup2] = useState<any>(null);
-  const [recommendedTests, setRecommendedTests] = useState<string[] | null>(null);
-  const [doctorRecommendations, setDoctorRecommendations] = useState<Recommendation[]>([]);
-  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
-  const [patientHistoryData, setPatientHistoryData] = useState<any[]>([]);
-  const [loadingPatientHistory, setLoadingPatientHistory] = useState(false);
-  const [selectedPatientHistory, setSelectedPatientHistory] = useState<any>(null);
-  const [showCharts, setShowCharts] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [analyzing, setAnalyzing] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      setTestResult("Please upload a valid image (JPEG, PNG, etc.)");
-      return;
-    }
-
-    setUploadedFile(file);
-    
-    // Clear previous results
-    setTestResult(null);
-    setLabComparison(null);
-    setPatientInfo(null);
-    setJsonGroup1(null);
-    setJsonGroup2(null);
-    setRecommendedTests(null);
-    setSelectedPatientHistory(null);
-
-    // Preview image
-    const reader = new FileReader();
-    reader.onload = () => setFilePreview(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  const handleAnalyzeImage = async () => {
-    if (!uploadedFile) return;
-
-    setAnalyzing(true);
-    setTestResult("AI is analyzing your medical document...");
-
-    try {
-      // Convert image → base64
-      const base64Image = await new Promise<string>((resolve, reject) => {
-        const fr = new FileReader();
-        fr.onload = () => resolve((fr.result as string).split(",")[1]);
-        fr.onerror = reject;
-        fr.readAsDataURL(uploadedFile);
-      });
-
-      // 4️⃣ Gemini Prompt (STRICT JSON RESPONSE)
-      const PROMPT = `
-You are a medical document analysis AI.
-
-STEP 1 – VALIDATION
-If this image is NOT a medical report (lab report, blood test, diagnostic report),
-respond ONLY with:
-{
-  "isMedical": false,
-  "error": "The uploaded file is not a medical report"
-}
-
-STEP 2 – EXTRACTION
-If it IS a medical report, extract values if present.
-
-Group 1:
-{
-  "Age": number,
-  "Gender": "M" | "F",
-  "BMI": number,
-  "Chol": number,
-  "TG": number,
-  "HDL": number,
-  "LDL": number,
-  "Cr": number,
-  "BUN": number
-}
-
-Group 2:
-{
-  "age": number,
-  "sex": number,
-  "cp": number,
-  "trestbps": number,
-  "chol": number,
-  "fbs": number,
-  "restecg": number,
-  "thalach": number,
-  "exang": number,
-  "oldpeak": number,
-  "slope": number,
-  "ca": number,
-  "thal": number
-}
-
-STEP 3 – COMPARISON
-For each lab value:
-- show actual value
-- show normal range
-- status: Normal | High | Low
-
-STEP 4 – SUMMARY
-Short medical-friendly summary.
-DO NOT give a diagnosis.
-
-STEP 5 – RECOMMENDED NEXT TESTS WITH REASONS
-Based on the lab report analysis, recommend what type of tests the patient should do next and explain WHY each test is recommended.
-
-Format each recommendation as: "Test Name - Reason for recommendation"
-
-Guidelines:
-- If abnormalities are found, suggest relevant follow-up tests with explanations:
-  * "ECG - To evaluate heart rhythm abnormalities indicated by elevated troponin levels"
-  * "Echocardiogram - To assess heart structure and function due to abnormal cholesterol ratios"
-  * "CT Scan - To investigate potential organ damage from elevated liver enzymes"
-  * "MRI - To examine soft tissue abnormalities suggested by inflammatory markers"
-  * "Additional Blood Tests - To monitor trending values and confirm initial findings"
-  * "Ultrasound - To visualize organ structure for abnormalities in size or texture"
-  
-- If all values are normal and no follow-up is needed, set recommendedTests to an empty array []
-
-Consider these factors when recommending tests:
-- Patient's age and gender
-- Abnormal lab values and their clinical significance
-- Potential underlying conditions suggested by the results
-- Standard medical protocols for follow-up care
-
-Example outputs:
-- ["ECG - Elevated troponin levels suggest possible cardiac stress"]
-- ["Lipid Panel - Abnormal cholesterol ratio indicates cardiovascular risk"]
-- [] (empty array when no follow-up needed)
-
-STEP 6 – OUTPUT
-Respond ONLY in valid JSON:
-
-{
-  "isMedical": true,
-  "patientInfo": {
-    "age": number | null,
-    "gender": string | null
-  },
-  "labComparison": [
+export default function HomePage() {
+  const services = [
     {
-      "test": string,
-      "actualValue": number | string,
-      "normalRange": string,
-      "status": "Normal" | "High" | "Low"
-    }
-  ],
-  "extractedJsonGroup1": {},
-  "extractedJsonGroup2": {},
-  "summary": string,
-  "recommendedTests": string[]
-}
-`;
-
-      // 5️⃣ Call Gemini API
-      const GEMINI_API_KEY = "AIzaSyAcR4BlYiehrDNcAkzAdwFxv6BCSLWq97E";
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: PROMPT },
-                  {
-                    inline_data: {
-                      mime_type: uploadedFile.type,
-                      data: base64Image,
-                    },
-                  },
-                ],
-              },
-            ],
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Gemini API Error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (!rawText) {
-        throw new Error("Empty AI response");
-      }
-
-      const cleanedText = rawText
-        .replace(/```json/g, "")
-        .replace(/```/g, "")
-        .trim();
-
-      const parsed = JSON.parse(cleanedText);
-      console.log(parsed);
-
-      
-      // 7️⃣ Non-medical document handling
-      if (!parsed.isMedical) {
-        setTestResult(parsed.error);
-        setAnalyzing(false);
-        return;
-      }
-
-      // Call diabetic API if extractedJsonGroup1 data is available
-      if (parsed.extractedJsonGroup1 && Object.keys(parsed.extractedJsonGroup1).length > 0) {
-        try {
-          const userId = localStorage.getItem('user_id');
-          const accessToken = localStorage.getItem('access_token');
-          
-          if (userId && accessToken) {
-            // Build diabetic data ensuring all fields are present
-            const diabeticData = {
-              userId: userId,
-              Age: parsed.extractedJsonGroup1.Age ?? null,
-              BMI: parsed.extractedJsonGroup1.BMI ?? null,
-              BUN: parsed.extractedJsonGroup1.BUN ?? null,
-              Chol: parsed.extractedJsonGroup1.Chol ?? null,
-              Cr: parsed.extractedJsonGroup1.Cr ?? null,
-              Gender: parsed.extractedJsonGroup1.Gender ?? null,
-              HDL: parsed.extractedJsonGroup1.HDL ?? null,
-              LDL: parsed.extractedJsonGroup1.LDL ?? null,
-              TG: parsed.extractedJsonGroup1.TG ?? null
-            };
-            
-            // Remove undefined values but keep null values
-            const filteredData = Object.fromEntries(
-              Object.entries(diabeticData).filter(([_, v]) => v !== undefined)
-            );
-            const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-            console.log('Sending diabetic data:', filteredData);
-            const response = await fetch(`${baseUrl}/api/diabetic/`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(filteredData),
-            });
-            
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error('Failed to call diabetic API:', response.status, errorText);
-            } else {
-              const diabeticResult = await response.json();
-              console.log('Diabetic API result:', diabeticResult);
-            }
-          } else {
-            console.warn('User ID or access token not found in localStorage for diabetic API call');
-          }
-        } catch (error) {
-          console.error('Error calling diabetic API:', error);
-        }
-      }
-
-      // Call heart API if extractedJsonGroup2 data is available
-      if (parsed.extractedJsonGroup2 && Object.keys(parsed.extractedJsonGroup2).length > 0) {
-        try {
-          const userId = localStorage.getItem('user_id');
-          const accessToken = localStorage.getItem('access_token');
-          
-          if (userId && accessToken) {
-            const heartData = {
-              userId: userId,
-              age: parsed.extractedJsonGroup2.age ?? null,
-              ca: parsed.extractedJsonGroup2.ca ?? null,
-              chol: parsed.extractedJsonGroup2.chol ?? null,
-              cp: parsed.extractedJsonGroup2.cp ?? null,
-              exang: parsed.extractedJsonGroup2.exang ?? null,
-              fbs: parsed.extractedJsonGroup2.fbs ?? null,
-              oldpeak: parsed.extractedJsonGroup2.oldpeak ?? null,
-              restecg: parsed.extractedJsonGroup2.restecg ?? null,
-              sex: parsed.extractedJsonGroup2.sex ?? null,
-              slope: parsed.extractedJsonGroup2.slope ?? null,
-              thal: parsed.extractedJsonGroup2.thal ?? null,
-              thalach: parsed.extractedJsonGroup2.thalach ?? null,
-              trestbps: parsed.extractedJsonGroup2.trestbps ?? null
-            };
-            
-            // Remove undefined values but keep null values
-            const filteredHeartData = Object.fromEntries(
-              Object.entries(heartData).filter(([_, v]) => v !== undefined)
-            );
-            
-            const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-            console.log('Sending heart data:', filteredHeartData);
-            const response = await fetch(`${baseUrl}/api/heart/`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(filteredHeartData),
-            });
-            
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error('Failed to call heart API:', response.status, errorText);
-            } else {
-              const heartResult = await response.json();
-              console.log('Heart API result:', heartResult);
-            }
-          } else {
-            console.warn('User ID or access token not found in localStorage for heart API call');
-          }
-        } catch (error) {
-          console.error('Error calling heart API:', error);
-        }
-      }
-
-      // 8️⃣ SUCCESS → store & display
-      setTestResult(parsed.summary);
-
-      // Optional state saves
-      setPatientInfo(parsed.patientInfo);
-      setLabComparison(parsed.labComparison);
-      setJsonGroup1(parsed.extractedJsonGroup1);
-      setJsonGroup2(parsed.extractedJsonGroup2);
-      setRecommendedTests(parsed.recommendedTests || []);
-      
-      // Save to database when isMedical is true
-      try {
-        const userId = localStorage.getItem('user_id');
-        const accessToken = localStorage.getItem('access_token');
-        
-        if (userId && accessToken) {
-          const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-          const response = await fetch(`${baseUrl}/api/patient-history`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userId: userId,
-              extractedJsonGroup1: parsed.extractedJsonGroup1,
-              extractedJsonGroup2: parsed.extractedJsonGroup2,
-              isMedical: parsed.isMedical,
-              labComparison: parsed.labComparison,
-              patientInfo: parsed.patientInfo,
-              recommendedTests: parsed.recommendedTests || [],
-              summary: parsed.summary
-            }),
-          });
-          
-          if (!response.ok) {
-            console.error('Failed to save patient history to database:', response.status);
-          }
-        } else {
-          console.warn('User ID or access token not found in localStorage');
-        }
-      } catch (error) {
-        console.error('Error saving patient history to database:', error);
-      }
-      
-      setAnalyzing(false);
-    } catch (error: any) {
-      console.error("Gemini Error:", error);
-      setTestResult("AI analysis failed. Please try again.");
-      setAnalyzing(false);
-    }
-  };
-
-  const handleRemoveFile = () => {
-    setUploadedFile(null);
-    setFilePreview(null);
-    setTestResult(null);
-    setLabComparison(null);
-    setPatientInfo(null);
-    setJsonGroup1(null);
-    setJsonGroup2(null);
-    setRecommendedTests(null);
-    setAnalyzing(false);
-    setSelectedPatientHistory(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  // Check authentication status
-  useEffect(() => {
-    const checkAuth = () => {
-      const accessToken = localStorage.getItem('access_token');
-      setIsLoggedIn(!!accessToken);
-    };
-
-    checkAuth();
-    // Also check on storage events (when localStorage changes in other tabs)
-    window.addEventListener('storage', checkAuth);
-    return () => window.removeEventListener('storage', checkAuth);
-  }, []);
-
-  // Fetch doctor recommendations
-  useEffect(() => {
-    const fetchRecommendations = async () => {
-      const accessToken = localStorage.getItem('access_token');
-      if (!accessToken) return;
-
-      setLoadingRecommendations(true);
-      try {
-        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-        const response = await fetch(`${baseUrl}/api/recommendations/`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          // Sort by date (newest first)
-          const sortedData = data.sort((a: Recommendation, b: Recommendation) => 
-            new Date(b.date).getTime() - new Date(a.date).getTime()
-          );
-          setDoctorRecommendations(sortedData);
-        } else {
-          console.error('Failed to fetch recommendations');
-        }
-      } catch (error) {
-        console.error('Error fetching recommendations:', error);
-      } finally {
-        setLoadingRecommendations(false);
-      }
-    };
-
-    if (isLoggedIn) {
-      fetchRecommendations();
-    }
-  }, [isLoggedIn]);
-
-  // Fetch patient history
-  useEffect(() => {
-    const fetchPatientHistory = async () => {
-      const accessToken = localStorage.getItem('access_token');
-      const userId = localStorage.getItem('user_id');
-      
-      if (!accessToken || !userId) return;
-
-      setLoadingPatientHistory(true);
-      try {
-        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-        const response = await fetch(`${baseUrl}/api/patient-history?user_id=${userId}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          // Sort by date (newest first)
-          const sortedData = data.sort((a: any, b: any) => 
-            new Date(b.date || b.created_at || b.timestamp).getTime() - 
-            new Date(a.date || a.created_at || a.timestamp).getTime()
-          );
-          setPatientHistoryData(sortedData);
-          console.log('Patient history data:', sortedData);
-        } else {
-          console.error('Failed to fetch patient history');
-        }
-      } catch (error) {
-        console.error('Error fetching patient history:', error);
-      } finally {
-        setLoadingPatientHistory(false);
-      }
-    };
-
-    if (isLoggedIn) {
-      fetchPatientHistory();
-    }
-  }, [isLoggedIn]);
-
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  // Generate chart data from patient history
-  const generateLabTrendData = () => {
-    if (!patientHistoryData || patientHistoryData.length === 0) return null;
-    
-    // Sort history by date to show chronological trend
-    const sortedHistory = [...patientHistoryData].sort((a, b) => 
-      new Date(a.createdAt || a.date || a.created_at || a.timestamp).getTime() - 
-      new Date(b.createdAt || b.date || b.created_at || b.timestamp).getTime()
-    );
-    
-    // Extract lab values for key metrics
-    const labels = sortedHistory.map(record => {
-      const date = new Date(record.createdAt || record.date || record.created_at || record.timestamp);
-      return `${date.getDate()}/${date.getMonth() + 1}`; // DD/MM format
-    });
-    
-    // Prepare datasets for common lab values
-    const totalCholesterolData = sortedHistory.map(record => {
-      const lab = record.labComparison?.find((item: any) => 
-        item.test.toLowerCase().includes('total cholesterol')
-      );
-      return lab ? lab.actualValue : null;
-    });
-    
-    const ldlData = sortedHistory.map(record => {
-      const lab = record.labComparison?.find((item: any) => 
-        item.test.toLowerCase().includes('ldl')
-      );
-      return lab ? lab.actualValue : null;
-    });
-    
-    const hdlData = sortedHistory.map(record => {
-      const lab = record.labComparison?.find((item: any) => 
-        item.test.toLowerCase().includes('hdl')
-      );
-      return lab ? lab.actualValue : null;
-    });
-    
-    const tgData = sortedHistory.map(record => {
-      const lab = record.labComparison?.find((item: any) => 
-        item.test.toLowerCase().includes('triglycerides') || item.test.toLowerCase().includes('tg')
-      );
-      return lab ? lab.actualValue : null;
-    });
-    
-    return {
-      labels,
-      datasets: [
-        {
-          label: 'Total Cholesterol',
-          data: totalCholesterolData,
-          borderColor: 'rgb(75, 192, 192)',
-          backgroundColor: 'rgba(75, 192, 192, 0.2)',
-          tension: 0.1,
-        },
-        {
-          label: 'LDL Cholesterol',
-          data: ldlData,
-          borderColor: 'rgb(255, 99, 132)',
-          backgroundColor: 'rgba(255, 99, 132, 0.2)',
-          tension: 0.1,
-        },
-        {
-          label: 'HDL Cholesterol',
-          data: hdlData,
-          borderColor: 'rgb(54, 162, 235)',
-          backgroundColor: 'rgba(54, 162, 235, 0.2)',
-          tension: 0.1,
-        },
-        {
-          label: 'Triglycerides',
-          data: tgData,
-          borderColor: 'rgb(255, 205, 86)',
-          backgroundColor: 'rgba(255, 205, 86, 0.2)',
-          tension: 0.1,
-        },
-      ],
-    };
-  };
-  
-  const generateNumericChartData = () => {
-    if (!patientHistoryData || patientHistoryData.length === 0) return null;
-    
-    // Sort history by date
-    const sortedHistory = [...patientHistoryData].sort((a, b) => 
-      new Date(a.createdAt || b.date || b.created_at || b.timestamp).getTime() - 
-      new Date(b.createdAt || b.date || b.created_at || b.timestamp).getTime()
-    );
-    
-    const labels = sortedHistory.map(record => {
-      const date = new Date(record.createdAt || record.date || record.created_at || record.timestamp);
-      return `${date.getDate()}/${date.getMonth() + 1}`; // DD/MM format
-    });
-    
-    // Extract numeric values from extractedJsonGroup1
-    const ageData = sortedHistory.map(record => record.extractedJsonGroup1?.Age || null);
-    const bmiData = sortedHistory.map(record => record.extractedJsonGroup1?.BMI || null);
-    
-    return {
-      labels,
-      datasets: [
-        {
-          label: 'Age',
-          data: ageData,
-          borderColor: 'rgb(153, 102, 255)',
-          backgroundColor: 'rgba(153, 102, 255, 0.2)',
-          tension: 0.1,
-        },
-        {
-          label: 'BMI',
-          data: bmiData,
-          borderColor: 'rgb(255, 159, 64)',
-          backgroundColor: 'rgba(255, 159, 64, 0.2)',
-          tension: 0.1,
-        }
-      ],
-    };
-  };
-  
-  const labTrendData = generateLabTrendData();
-  const numericData = generateNumericChartData();
-  
-  // Handle logout
-  const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('token_type');
-    localStorage.removeItem('user_id');
-    localStorage.removeItem('role');
-    localStorage.removeItem('name');
-    localStorage.removeItem('user');
-    setIsLoggedIn(false);
-    router.push('/login');
-  };
-
-  // Handle login redirect
-  const handleLogin = () => {
-    router.push('/login');
-  };
-
-  // Load patient history data into display sections
-  const loadPatientHistory = (historyItem: any) => {
-    setSelectedPatientHistory(historyItem);
-    
-    // Load summary into test result
-    if (historyItem.summary) {
-      setTestResult(historyItem.summary);
-    }
-    
-    // Load lab comparison data
-    if (historyItem.labComparison) {
-      setLabComparison(historyItem.labComparison);
-    }
-    
-    // Load patient info
-    if (historyItem.patientInfo) {
-      setPatientInfo(historyItem.patientInfo);
-    }
-    
-    // Load extracted JSON groups
-    if (historyItem.extractedJsonGroup1) {
-      setJsonGroup1(historyItem.extractedJsonGroup1);
-    }
-    
-    if (historyItem.extractedJsonGroup2) {
-      setJsonGroup2(historyItem.extractedJsonGroup2);
-    }
-    
-    // Load recommended tests
-    if (historyItem.recommendedTests) {
-      setRecommendedTests(historyItem.recommendedTests);
-    }
-    
-    // Scroll to top to show the loaded data
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-
+      id: 1,
+      title: 'Noise-Robust ECG Digitization',
+      description: 'Advanced noise filtering and ECG signal processing for accurate cardiac waveform digitization from any source.',
+      icon: Zap,
+      color: 'from-blue-500 to-cyan-500',
+      bgColor: 'from-blue-50 to-cyan-50',
+      borderColor: 'border-blue-300/50',
+      features: ['Real-time processing', 'Noise filtering', 'Signal normalization'],
+    },
+    {
+      id: 2,
+      title: 'Category-Aware Lab Recommendation',
+      description: 'AI-powered lab test recommendations based on patient medical history and clinical guidelines.',
+      icon: BarChart3,
+      color: 'from-purple-500 to-pink-500',
+      bgColor: 'from-purple-50 to-pink-50',
+      borderColor: 'border-purple-300/50',
+      features: ['Smart recommendations', 'Cost optimization', 'Guideline compliance'],
+      href: '/lab-report',
+    },
+    {
+      id: 3,
+      title: 'Sinhala Clinical Conversation Analysis',
+      description: 'Natural language processing for Sinhala medical conversations with clinical entity extraction.',
+      icon: Brain,
+      color: 'from-amber-500 to-orange-500',
+      bgColor: 'from-amber-50 to-orange-50',
+      borderColor: 'border-amber-300/50',
+      features: ['Language support', 'Entity extraction', 'Clinical insights'],
+    },
+    {
+      id: 4,
+      title: 'Evidence-Driven Reasoning Agents (KRA & ORA)',
+      description: 'Knowledge and observation reasoning agents that provide evidence-based diagnostic conclusions.',
+      icon: Brain,
+      color: 'from-green-500 to-emerald-500',
+      bgColor: 'from-green-50 to-emerald-50',
+      borderColor: 'border-green-300/50',
+      features: ['Knowledge reasoning', 'Evidence synthesis', 'Diagnostic logic'],
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-white">
-            AI Diagnostic Dashboard
-          </h1>
-          <div className="flex gap-4">
-            {isLoggedIn ? (
-              <>
-                {/* <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
-                  Profile
-                </button> */}
-                <button 
-                  onClick={handleLogout}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <button 
-                onClick={handleLogin}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+      {/* Navigation */}
+      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-white/70 border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg">
+              <Heart className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-bold text-slate-900">CardiAI</span>
+          </Link>
+
+          <div className="hidden md:flex items-center gap-8">
+            <Link href="#services" className="text-slate-700 hover:text-cyan-600 font-medium transition-colors">
+              Services
+            </Link>
+            <Link href="#features" className="text-slate-700 hover:text-cyan-600 font-medium transition-colors">
+              Features
+            </Link>
+            <Link href="/login" className="text-slate-700 hover:text-cyan-600 font-medium transition-colors">
+              Sign In
+            </Link>
+            <Link
+              href="/register"
+              className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+            >
+              Get Started
+            </Link>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
+        <div className="text-center space-y-8">
+          <div className="space-y-4">
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-slate-900 text-balance">
+              Advanced <span className="bg-gradient-to-r from-cyan-500 to-blue-600 bg-clip-text text-transparent">Cardiac Diagnostics</span> Powered by AI
+            </h1>
+            <p className="text-xl md:text-2xl text-slate-600 text-balance max-w-3xl mx-auto">
+              Transform cardiac care with our comprehensive AI diagnostic platform combining ECG analysis, lab recommendations, and clinical reasoning.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              href="/register"
+              className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-semibold hover:shadow-xl hover:shadow-cyan-500/30 transition-all flex items-center gap-2 group"
+            >
+              Start Diagnosis
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <Link
+              href="#services"
+              className="px-8 py-4 border-2 border-slate-300 text-slate-900 rounded-xl font-semibold hover:border-cyan-500 hover:bg-cyan-50 transition-all"
+            >
+              Explore Services
+            </Link>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-12">
+            {[
+              { label: 'AI Models', value: '4' },
+              { label: 'Accuracy', value: '95%+' },
+              { label: 'Languages', value: '5+' },
+              { label: 'Tests', value: '100+' },
+            ].map((stat, idx) => (
+              <div key={idx} className="text-center">
+                <p className="text-3xl font-bold text-cyan-600">{stat.value}</p>
+                <p className="text-sm text-slate-600 mt-1">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Decorative elements */}
+        <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+          <div className="absolute -top-32 -right-32 w-72 h-72 bg-cyan-400/10 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-32 -left-32 w-72 h-72 bg-blue-400/10 rounded-full blur-3xl"></div>
+        </div>
+      </section>
+
+      {/* Services Section */}
+      <section id="services" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">Four Core Diagnostic Services</h2>
+          <p className="text-lg text-slate-600">Comprehensive AI-powered tools for modern cardiac care</p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-8">
+          {services.map((service) => {
+            const Icon = service.icon;
+            const [color1, color2] = service.color.split(' to-');
+            const CardContent = (
+              <div
+                className={`group relative overflow-hidden bg-gradient-to-br ${service.bgColor} border-2 ${service.borderColor} rounded-2xl p-8 hover:shadow-xl transition-all hover:-translate-y-2`}
               >
-                Login
-              </button>
-            )}
+                {/* Background gradient */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${service.color} opacity-0 group-hover:opacity-5 transition-opacity`}></div>
+
+                <div className="relative z-10">
+                  {/* Icon */}
+                  <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${service.color} p-3 mb-4 shadow-lg`}>
+                    <Icon className="w-8 h-8 text-white" />
+                  </div>
+
+                  {/* Title */}
+                  <h3 className="text-2xl font-bold text-slate-900 mb-3">{service.title}</h3>
+
+                  {/* Description */}
+                  <p className="text-slate-700 mb-6 leading-relaxed">{service.description}</p>
+
+                  {/* Features */}
+                  <ul className="space-y-2 mb-6">
+                    {service.features.map((feature, idx) => (
+                      <li key={idx} className="flex items-center gap-2 text-slate-700">
+                        <CheckCircle className="w-4 h-4 text-cyan-600 flex-shrink-0" />
+                        <span className="text-sm">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* CTA Button */}
+                  <Link
+                    href={service.href || '/dashboard'}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all group/btn"
+                  >
+                    Learn More
+                    <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                  </Link>
+                </div>
+              </div>
+            );
+            return service.href ? (
+              <Link key={service.id} href={service.href} className="block focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded-2xl">
+                {CardContent}
+              </Link>
+            ) : (
+              <div key={service.id}>{CardContent}</div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="bg-white border-2 border-slate-200 rounded-2xl p-12 md:p-16">
+          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-12 text-center">Why Choose CardiAI?</h2>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                title: 'AI-Powered Accuracy',
+                description: 'Advanced machine learning models trained on thousands of cardiac cases for reliable diagnostics.',
+                icon: '🧠',
+              },
+              {
+                title: 'Multi-Modal Analysis',
+                description: 'Comprehensive analysis combining ECG data, lab results, and clinical conversations.',
+                icon: '📊',
+              },
+              {
+                title: 'Clinical Integration',
+                description: 'Seamless integration with existing medical workflows and electronic health records.',
+                icon: '🔗',
+              },
+              {
+                title: 'Evidence-Based Reasoning',
+                description: 'Transparent decision-making backed by medical literature and clinical guidelines.',
+                icon: '📚',
+              },
+              {
+                title: 'Multilingual Support',
+                description: 'Support for multiple languages including Sinhala for broader accessibility.',
+                icon: '🌍',
+              },
+              {
+                title: '24/7 Availability',
+                description: 'Always-on diagnostic support for continuous patient monitoring and analysis.',
+                icon: '⏰',
+              },
+            ].map((feature, idx) => (
+              <div key={idx} className="space-y-3">
+                <p className="text-4xl">{feature.icon}</p>
+                <h4 className="text-xl font-bold text-slate-900">{feature.title}</h4>
+                <p className="text-slate-600">{feature.description}</p>
+              </div>
+            ))}
           </div>
         </div>
+      </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column: Image Upload & Test Result */}
-          <div className="space-y-6">
-            {/* Image Upload Section */}
-            <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-green-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                    />
-                  </svg>
-                </div>
-                <h2 className="text-xl font-bold text-white">IMAGE UPLOAD</h2>
-              </div>
-
-              {!uploadedFile ? (
-                <div className="border-2 border-dashed border-[#2a2a3e] rounded-lg p-8 text-center hover:border-green-500 transition-colors">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="image-upload"
-                  />
-                  <label
-                    htmlFor="image-upload"
-                    className="cursor-pointer flex flex-col items-center gap-4"
-                  >
-                    <svg
-                      className="w-16 h-16 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                      />
-                    </svg>
-                    <div>
-                      <p className="text-gray-300 font-medium">
-                        Click to upload Image
-                      </p>
-                      <p className="text-gray-500 text-sm mt-1">
-                        or drag and drop (JPG, PNG, etc.)
-                      </p>
-                    </div>
-                  </label>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="bg-[#0f0f1a] border border-green-500/50 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-green-500/20 rounded flex items-center justify-center">
-                          <svg
-                            className="w-5 h-5 text-green-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                        </div>
-                        <div>
-                          <p className="text-green-400 font-medium">
-                            IMAGE LOADED
-                          </p>
-                          <p className="text-gray-400 text-sm">
-                            {uploadedFile.name}
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={handleRemoveFile}
-                        className="text-red-400 hover:text-red-300 transition-colors"
-                      >
-                        <svg
-                          className="w-6 h-6"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Image Preview */}
-                  {filePreview && (
-                    <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4">
-                      <img
-                        src={filePreview}
-                        className="w-full h-96 object-contain rounded"
-                        alt="Uploaded medical image preview"
-                      />
-                    </div>
-                  )}
-
-                  {/* Submit Button */}
-                  <button
-                    onClick={handleAnalyzeImage}
-                    disabled={analyzing}
-                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-600/50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-colors duration-200 shadow-lg shadow-green-500/20"
-                  >
-                    {analyzing ? 'Analyzing...' : 'Analyze Image'}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Test Result Section */}
-            {testResult && (
-              <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                    <svg
-                      className="w-6 h-6 text-blue-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                  </div>
-                  <h2 className="text-xl font-bold text-white">TEST RESULT</h2>
-                </div>
-                <div className="bg-[#0f0f1a] border border-blue-500/30 rounded-lg p-4">
-                  <p className="text-gray-300 leading-relaxed">{testResult}</p>
-                </div>
-              </div>
-            )}
-  {/* Recommended Next Tests Section */}
-  {recommendedTests !== null && (
-              <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                    <svg
-                      className="w-6 h-6 text-purple-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-                      />
-                    </svg>
-                  </div>
-                  <h2 className="text-xl font-bold text-white">RECOMMENDED NEXT TESTS</h2>
-                </div>
-                <div className="bg-[#0f0f1a] border border-purple-500/30 rounded-lg p-4">
-                  {recommendedTests.length === 0 ? (
-                    <div className="text-center py-4">
-                      <div className="flex items-center justify-center mb-2">
-                        <svg
-                          className="w-12 h-12 text-green-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                      </div>
-                      <p className="text-green-400 font-medium text-lg mb-1">
-                        No Additional Tests Required
-                      </p>
-                      <p className="text-gray-400 text-sm">
-                        Based on the lab report analysis, all values are within normal range. No follow-up tests are needed at this time.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <p className="text-gray-300 mb-3">
-                        Based on the lab report analysis, the following tests are recommended:
-                      </p>
-                      <ul className="space-y-2">
-                        {recommendedTests.map((test, index) => (
-                          <li
-                            key={index}
-                            className="flex items-start gap-3 p-3 bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg hover:border-purple-500/50 transition-colors"
-                          >
-                            <div className="w-6 h-6 bg-purple-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <span className="text-purple-400 text-xs font-bold">
-                                {index + 1}
-                              </span>
-                            </div>
-                            <p className="text-white font-medium">{test}</p>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-            {/* Lab Comparison Table Section */}
-            {labComparison && labComparison.length > 0 && (
-              <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
-                    <svg
-                      className="w-6 h-6 text-green-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                  </div>
-                  <h2 className="text-xl font-bold text-white">LAB COMPARISON</h2>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left text-gray-400">
-                    <thead className="text-xs text-gray-300 uppercase bg-[#0f0f1a] border-b border-[#2a2a3e]">
-                      <tr>
-                        <th scope="col" className="px-4 py-3">Test</th>
-                        <th scope="col" className="px-4 py-3">Actual Value</th>
-                        <th scope="col" className="px-4 py-3">Normal Range</th>
-                        <th scope="col" className="px-4 py-3">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {labComparison.map((item: any, index: number) => (
-                        <tr 
-                          key={index} 
-                          className="border-b border-[#2a2a3e] hover:bg-[#202030] transition-colors"
-                        >
-                          <td className="px-4 py-3 font-medium text-white">{item.test}</td>
-                          <td className="px-4 py-3">
-                            <span className="px-2 py-1 bg-[#0f0f1a] rounded text-white">
-                              {item.actualValue}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">{item.normalRange}</td>
-                          <td className="px-4 py-3">
-                            <span 
-                              className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                item.status === 'Normal' 
-                                  ? 'bg-green-500/20 text-green-400' 
-                                  : item.status === 'High' 
-                                    ? 'bg-red-500/20 text-red-400' 
-                                    : 'bg-yellow-500/20 text-yellow-400'
-                              }`}
-                            >
-                              {item.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-          
+      {/* CTA Section */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="relative overflow-hidden bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl p-12 md:p-16 text-center">
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-0 left-0 w-40 h-40 bg-white rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 right-0 w-40 h-40 bg-white rounded-full blur-3xl"></div>
           </div>
 
-          {/* Right Column: Patient History & Doctor Recommendations */}
-          <div className="space-y-6">
-                      
-            {/* Diagnostic Test Buttons */}
-            <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-blue-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-                    />
-                  </svg>
-                </div>
-                <h2 className="text-xl font-bold text-white">DIAGNOSTIC TESTS</h2>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <button 
-                  onClick={() => window.location.href = '/cardiac'}
-                  className="bg-[#0f0f1a] hover:bg-[#1f1f2f] border border-[#2a2a3e] rounded-lg p-4 transition-colors flex flex-col items-center justify-center"
-                >
-                  <div className="w-8 h-8 bg-red-500/20 rounded-lg flex items-center justify-center mb-2">
-                    <svg
-                      className="w-5 h-5 text-red-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                      />
-                    </svg>
-                  </div>
-                  <span className="text-white font-medium">Cardiac Test</span>
-                </button>
-                          
-                <button 
-                  onClick={() => window.location.href = '/heart'}
-                  className="bg-[#0f0f1a] hover:bg-[#1f1f2f] border border-[#2a2a3e] rounded-lg p-4 transition-colors flex flex-col items-center justify-center"
-                >
-                  <div className="w-8 h-8 bg-pink-500/20 rounded-lg flex items-center justify-center mb-2">
-                    <svg
-                      className="w-5 h-5 text-pink-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                      />
-                    </svg>
-                  </div>
-                  <span className="text-white font-medium">Heart Test</span>
-                </button>
-                          
-                <button 
-                  onClick={() => window.location.href = '/diabetic'}
-                  className="bg-[#0f0f1a] hover:bg-[#1f1f2f] border border-[#2a2a3e] rounded-lg p-4 transition-colors flex flex-col items-center justify-center"
-                >
-                  <div className="w-8 h-8 bg-yellow-500/20 rounded-lg flex items-center justify-center mb-2">
-                    <svg
-                      className="w-5 h-5 text-yellow-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
-                      />
-                    </svg>
-                  </div>
-                  <span className="text-white font-medium">Diabetic Test</span>
-                </button>
-              </div>
+          <div className="relative z-10 space-y-6">
+            <h2 className="text-4xl md:text-5xl font-bold text-white text-balance">
+              Ready to Transform Cardiac Care?
+            </h2>
+            <p className="text-lg text-cyan-100 max-w-2xl mx-auto">
+              Join healthcare professionals using CardiAI for advanced cardiac diagnostics and evidence-based patient care.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+              <Link
+                href="/register"
+                className="px-8 py-4 bg-white text-cyan-600 rounded-xl font-bold hover:shadow-lg transition-all inline-flex items-center justify-center gap-2 group"
+              >
+                Create Account
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <Link
+                href="/login"
+                className="px-8 py-4 border-2 border-white text-white rounded-xl font-bold hover:bg-white/10 transition-all"
+              >
+                Sign In
+              </Link>
             </div>
-                     {/* Doctor Recommendations Section */}
-            <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-cyan-500/20 rounded-lg flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-cyan-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                </div>
-                <h2 className="text-xl font-bold text-white">
-                  DOCTOR RECOMMENDATIONS
-                </h2>
-              </div>
-              <div className="space-y-4">
-                {loadingRecommendations ? (
-                  <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4 text-center text-gray-400">
-                    Loading recommendations...
-                  </div>
-                ) : doctorRecommendations.length === 0 ? (
-                  <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4 text-center text-gray-400">
-                    No recommendations available yet
-                  </div>
-                ) : (
-                  doctorRecommendations.map((rec) => (
-                    <div
-                      key={rec.id}
-                      className="bg-[#0f0f1a] border border-cyan-500/30 rounded-lg p-4"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <p className="text-cyan-400 font-semibold">
-                            {rec.doctor_name}
-                          </p>
-                          <p className="text-gray-400 text-sm">{formatDate(rec.date)}</p>
-                        </div>
-                      </div>
-                      <p className="text-gray-300 leading-relaxed">
-                        {rec.recommendation}
-                      </p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>   
-            {/* Patient History Section */}
-            <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-purple-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
-                <h2 className="text-xl font-bold text-white">
-                  PATIENT HISTORY
-                </h2>
-                <button 
-                  onClick={() => setShowCharts(!showCharts)}
-                  className="ml-auto px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm transition-colors"
-                >
-                  {showCharts ? 'Show List' : 'Show Charts'}
-                </button>
-              </div>
-              
-              {showCharts ? (
-                <div className="space-y-6">
-                  {/* Lab Trends Chart */}
-                  {labTrendData && (
-                    <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4">
-                      <h3 className="text-white font-semibold mb-3">Lab Values Trend</h3>
-                      <div className="h-64">
-                        <Line 
-                          data={labTrendData} 
-                          options={{
-                            responsive: true,
-                            plugins: {
-                              legend: {
-                                position: 'top' as const,
-                                labels: {
-                                  color: '#cbd5e1',
-                                  font: {
-                                    size: 12
-                                  }
-                                }
-                              },
-                              title: {
-                                display: false,
-                                text: 'Lab Values Over Time',
-                                color: '#e2e8f0',
-                                font: {
-                                  size: 14,
-                                  weight: 'bold'
-                                }
-                              }
-                            },
-                            scales: {
-                              y: {
-                                beginAtZero: false,
-                                ticks: {
-                                  color: '#94a3b8',
-                                  font: {
-                                    size: 11
-                                  }
-                                },
-                                grid: {
-                                  color: '#2d3748'
-                                }
-                              },
-                              x: {
-                                ticks: {
-                                  color: '#94a3b8',
-                                  font: {
-                                    size: 11
-                                  }
-                                },
-                                grid: {
-                                  color: '#2d3748'
-                                }
-                              }
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Numeric Data Chart */}
-                  {numericData && (
-                    <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4">
-                      <h3 className="text-white font-semibold mb-3">Patient Metrics Trend</h3>
-                      <div className="h-64">
-                        <Line 
-                          data={numericData} 
-                          options={{
-                            responsive: true,
-                            plugins: {
-                              legend: {
-                                position: 'top' as const,
-                                labels: {
-                                  color: '#cbd5e1',
-                                  font: {
-                                    size: 12
-                                  }
-                                }
-                              },
-                              title: {
-                                display: false,
-                                text: 'Patient Metrics Over Time',
-                                color: '#e2e8f0',
-                                font: {
-                                  size: 14,
-                                  weight: 'bold'
-                                }
-                              }
-                            },
-                            scales: {
-                              y: {
-                                beginAtZero: false,
-                                ticks: {
-                                  color: '#94a3b8',
-                                  font: {
-                                    size: 11
-                                  }
-                                },
-                                grid: {
-                                  color: '#2d3748'
-                                }
-                              },
-                              x: {
-                                ticks: {
-                                  color: '#94a3b8',
-                                  font: {
-                                    size: 11
-                                  }
-                                },
-                                grid: {
-                                  color: '#2d3748'
-                                }
-                              }
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Chart Controls */}
-                  <div className="text-center pt-2">
-                    <button 
-                      onClick={() => setShowCharts(false)}
-                      className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
-                    >
-                      Back to List View
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-                  {loadingPatientHistory ? (
-                    <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4 text-center text-gray-400">
-                      Loading patient history...
-                    </div>
-                  ) : patientHistoryData.length === 0 ? (
-                    <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4 text-center text-gray-400">
-                      No patient history available
-                    </div>
-                  ) : (
-                    patientHistoryData.map((record, index) => (
-                      <div
-                        key={index}
-                        onClick={() => loadPatientHistory(record)}
-                        className={`bg-[#0f0f1a] border rounded-lg p-4 transition-colors cursor-pointer ${
-                          selectedPatientHistory === record 
-                            ? 'border-purple-500 shadow-lg shadow-purple-500/20' 
-                            : 'border-[#2a2a3e] hover:border-purple-500/50'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <p className="text-white font-medium">{record.test || record.summary || 'Medical Report'}</p>
-                            <p className="text-gray-400 text-sm">
-                              {formatDate(record.date || record.created_at || record.timestamp || new Date().toISOString())}
-                            </p>
-                          </div>
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              record.result === "Normal" || 
-                              (record.labComparison && record.labComparison.every((item: any) => item.status === "Normal"))
-                                ? "bg-green-500/20 text-green-400" 
-                                : "bg-yellow-500/20 text-yellow-400"
-                            }`}
-                          >
-                            {record.result || 
-                             (record.labComparison && record.labComparison.every((item: any) => item.status === "Normal") ? "Normal" : "Abnormal")}
-                          </span>
-                        </div>
-                        <p className="text-gray-400 text-sm">
-                          {record.doctor || record.doctor_name || 'Auto-generated Report'}
-                        </p>
-                        {record.summary && (
-                          <p className="text-gray-300 text-sm mt-2 line-clamp-2">
-                            {record.summary}
-                          </p>
-                        )}
-                        {selectedPatientHistory === record && (
-                          <div className="mt-3 pt-3 border-t border-[#2a2a3e]">
-                            <p className="text-purple-400 text-xs font-medium flex items-center gap-1">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              Loaded - Click to reload
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
-
-          
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-slate-900 text-slate-300 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg">
+                  <Heart className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-lg font-bold text-white">CardiAI</span>
+              </div>
+              <p className="text-sm">Advanced cardiac diagnostics powered by artificial intelligence.</p>
+            </div>
+            <div>
+              <h4 className="font-bold text-white mb-4">Services</h4>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <Link href="#services" className="hover:text-cyan-400 transition-colors">
+                    ECG Digitization
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#services" className="hover:text-cyan-400 transition-colors">
+                    Lab Recommendations
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#services" className="hover:text-cyan-400 transition-colors">
+                    Clinical Analysis
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-white mb-4">Company</h4>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <Link href="#" className="hover:text-cyan-400 transition-colors">
+                    About
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#" className="hover:text-cyan-400 transition-colors">
+                    Contact
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#" className="hover:text-cyan-400 transition-colors">
+                    Privacy
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-white mb-4">Legal</h4>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <Link href="#" className="hover:text-cyan-400 transition-colors">
+                    Terms of Service
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#" className="hover:text-cyan-400 transition-colors">
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#" className="hover:text-cyan-400 transition-colors">
+                    HIPAA Compliance
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-800 pt-8 text-center text-sm">
+            <p>&copy; 2024 CardiAI. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
