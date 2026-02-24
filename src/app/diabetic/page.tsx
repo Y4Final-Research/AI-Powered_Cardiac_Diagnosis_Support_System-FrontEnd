@@ -1,8 +1,5 @@
-'use client';
+"use client";
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, Heart } from 'lucide-react';
-
 interface FormData {
   Age: string;
   Gender: string;
@@ -37,6 +34,7 @@ export default function DiabeticPage() {
   const [loading, setLoading] = useState(false);
   const [fetchingData, setFetchingData] = useState(true);
   
+  // Fetch data when component mounts
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -59,6 +57,9 @@ export default function DiabeticPage() {
         
         if (response.ok) {
           const data = await response.json();
+          console.log('Fetched diabetic data:', data);
+          
+          // Populate form with fetched data
           setFormData({
             Age: data.Age?.toString() || '',
             Gender: data.Gender || '',
@@ -70,6 +71,8 @@ export default function DiabeticPage() {
             Cr: data.Cr?.toString() || '',
             BUN: data.BUN?.toString() || ''
           });
+        } else {
+          console.error('Failed to fetch diabetic data:', response.status);
         }
       } catch (error) {
         console.error('Error fetching diabetic data:', error);
@@ -83,20 +86,68 @@ export default function DiabeticPage() {
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+    
+    // Clear error when user starts typing
     if (errors[name]) {
-      setErrors({ ...errors, [name]: '' });
+      setErrors({
+        ...errors,
+        [name]: ''
+      });
     }
   };
   
   const validate = (): FormErrors => {
     const newErrors: FormErrors = {};
+    
+    // Age validation (1-120)
     if (!formData.Age || isNaN(Number(formData.Age)) || Number(formData.Age) < 1 || Number(formData.Age) > 120) {
-      newErrors.Age = 'Age must be between 1 and 120';
+      newErrors.Age = 'Age must be a number between 1 and 120';
     }
+    
+    // Gender validation (M or F)
     if (!formData.Gender || (formData.Gender !== 'M' && formData.Gender !== 'F')) {
-      newErrors.Gender = 'Gender must be M or F';
+      newErrors.Gender = 'Gender must be M (Male) or F (Female)';
     }
+    
+    // BMI validation (10-60)
+    if (!formData.BMI || isNaN(Number(formData.BMI)) || Number(formData.BMI) < 10 || Number(formData.BMI) > 60) {
+      newErrors.BMI = 'BMI must be between 10 and 60';
+    }
+    
+    // Chol validation (1-20)
+    if (!formData.Chol || isNaN(Number(formData.Chol)) || Number(formData.Chol) < 1 || Number(formData.Chol) > 500) {
+      newErrors.Chol = 'Cholesterol must be between 1 and 20';
+    }
+    
+    // TG validation (0.1-10)
+    if (!formData.TG || isNaN(Number(formData.TG)) || Number(formData.TG) < 0.1 || Number(formData.TG) > 500) {
+      newErrors.TG = 'Triglycerides must be between 0.1 and 10';
+    }
+    
+    // HDL validation (0.1-10)
+    if (!formData.HDL || isNaN(Number(formData.HDL)) || Number(formData.HDL) < 0.1 || Number(formData.HDL) > 100) {
+      newErrors.HDL = 'HDL must be between 0.1 and 10';
+    }
+    
+    // LDL validation (0.1-20)
+    if (!formData.LDL || isNaN(Number(formData.LDL)) || Number(formData.LDL) < 0.1 || Number(formData.LDL) > 500) {
+      newErrors.LDL = 'LDL must be between 0.1 and 20';
+    }
+    
+    // Cr validation (10-200)
+    if (!formData.Cr || isNaN(Number(formData.Cr)) || Number(formData.Cr) < 10 || Number(formData.Cr) > 200) {
+      newErrors.Cr = 'Creatinine must be between 10 and 200';
+    }
+    
+    // BUN validation (1-50)
+    if (!formData.BUN || isNaN(Number(formData.BUN)) || Number(formData.BUN) < 1 || Number(formData.BUN) > 50) {
+      newErrors.BUN = 'BUN must be between 1 and 50';
+    }
+    
     return newErrors;
   };
   
@@ -115,7 +166,9 @@ export default function DiabeticPage() {
     try {
       const response = await fetch('https://diabatic-744384162454.asia-south1.run.app', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           Age: Number(formData.Age),
           Gender: formData.Gender,
@@ -129,49 +182,39 @@ export default function DiabeticPage() {
         })
       });
       
-      if (!response.ok) throw new Error(`API request failed`);
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
+      }
+      
       const data = await response.json();
       setResult(data);
     } catch (error: any) {
-      console.error('Error:', error);
-      setResult({ error: `Failed: ${error.message}` });
+      console.error('Error submitting form:', error);
+      setResult({ error: `Failed to submit form: ${error.message}` });
     } finally {
       setLoading(false);
     }
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-white/70 border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg">
-              <Heart className="w-5 h-5 text-white" />
+    <div className="min-h-screen bg-[#0a0a0f] p-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">Diabetic Test</h1>
+          <p className="text-gray-400">Enter patient data for diabetic risk assessment</p>
+          {fetchingData && (
+            <div className="mt-4 text-blue-400 flex items-center justify-center gap-2">
+              <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+              <span>Loading your previous data...</span>
             </div>
-            <span className="text-xl font-bold text-slate-900">CardiAI</span>
-          </Link>
-          <Link href="/" className="flex items-center gap-2 text-slate-700 hover:text-cyan-600 font-medium transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-            Back
-          </Link>
-        </div>
-      </nav>
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-12">
-          <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-purple-500/30">
-            <Heart className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-4xl font-bold text-slate-900 mb-3">Diabetic Risk Assessment</h1>
-          <p className="text-lg text-slate-600">Analyze metabolic and lab parameters for diabetes risk</p>
+          )}
         </div>
         
-        <div className="bg-white border-2 border-slate-200 rounded-2xl p-8 shadow-lg mb-8">
+        <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6 mb-8">
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="Age" className="block text-sm font-semibold text-slate-900 mb-2">
-                Age <span className="text-red-500">*</span>
+              <label htmlFor="Age" className="block text-sm font-medium text-gray-300 mb-1">
+                Age <span className="text-red-400">*</span>
               </label>
               <input
                 type="number"
@@ -179,34 +222,33 @@ export default function DiabeticPage() {
                 name="Age"
                 value={formData.Age}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-colors ${
-                  errors.Age ? 'border-red-400 bg-red-50' : 'border-slate-300 bg-white'
-                }`}
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.Age ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter age"
               />
-              {errors.Age && <p className="mt-2 text-sm text-red-600 font-medium">{errors.Age}</p>}
+              {errors.Age && <p className="mt-1 text-sm text-red-400">{errors.Age}</p>}
             </div>
             
             <div>
-              <label htmlFor="Gender" className="block text-sm font-semibold text-slate-900 mb-2">
-                Gender <span className="text-red-500">*</span>
+              <label htmlFor="Gender" className="block text-sm font-medium text-gray-300 mb-1">
+                Gender <span className="text-red-400">*</span>
               </label>
               <select
                 id="Gender"
                 name="Gender"
                 value={formData.Gender}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-colors"
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.Gender ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select gender</option>
-                <option value="M">Male</option>
-                <option value="F">Female</option>
+                <option value="M">Male (M)</option>
+                <option value="F">Female (F)</option>
               </select>
+              {errors.Gender && <p className="mt-1 text-sm text-red-400">{errors.Gender}</p>}
             </div>
-
+            
             <div>
-              <label htmlFor="BMI" className="block text-sm font-semibold text-slate-900 mb-2">
-                BMI <span className="text-red-500">*</span>
+              <label htmlFor="BMI" className="block text-sm font-medium text-gray-300 mb-1">
+                BMI <span className="text-red-400">*</span>
               </label>
               <input
                 type="number"
@@ -215,14 +257,15 @@ export default function DiabeticPage() {
                 value={formData.BMI}
                 onChange={handleChange}
                 step="0.1"
-                className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-colors"
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.BMI ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter BMI"
               />
+              {errors.BMI && <p className="mt-1 text-sm text-red-400">{errors.BMI}</p>}
             </div>
-
+            
             <div>
-              <label htmlFor="Chol" className="block text-sm font-semibold text-slate-900 mb-2">
-                Cholesterol <span className="text-red-500">*</span>
+              <label htmlFor="Chol" className="block text-sm font-medium text-gray-300 mb-1">
+                Cholesterol <span className="text-red-400">*</span>
               </label>
               <input
                 type="number"
@@ -231,14 +274,32 @@ export default function DiabeticPage() {
                 value={formData.Chol}
                 onChange={handleChange}
                 step="0.1"
-                className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-colors"
-                placeholder="Enter value"
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.Chol ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                placeholder="Enter cholesterol level"
               />
+              {errors.Chol && <p className="mt-1 text-sm text-red-400">{errors.Chol}</p>}
             </div>
-
+            
             <div>
-              <label htmlFor="HDL" className="block text-sm font-semibold text-slate-900 mb-2">
-                HDL <span className="text-red-500">*</span>
+              <label htmlFor="TG" className="block text-sm font-medium text-gray-300 mb-1">
+                Triglycerides (TG) <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="number"
+                id="TG"
+                name="TG"
+                value={formData.TG}
+                onChange={handleChange}
+                step="0.1"
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.TG ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                placeholder="Enter triglycerides level"
+              />
+              {errors.TG && <p className="mt-1 text-sm text-red-400">{errors.TG}</p>}
+            </div>
+            
+            <div>
+              <label htmlFor="HDL" className="block text-sm font-medium text-gray-300 mb-1">
+                HDL <span className="text-red-400">*</span>
               </label>
               <input
                 type="number"
@@ -247,14 +308,15 @@ export default function DiabeticPage() {
                 value={formData.HDL}
                 onChange={handleChange}
                 step="0.1"
-                className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-colors"
-                placeholder="Enter value"
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.HDL ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                placeholder="Enter HDL level"
               />
+              {errors.HDL && <p className="mt-1 text-sm text-red-400">{errors.HDL}</p>}
             </div>
-
+            
             <div>
-              <label htmlFor="LDL" className="block text-sm font-semibold text-slate-900 mb-2">
-                LDL <span className="text-red-500">*</span>
+              <label htmlFor="LDL" className="block text-sm font-medium text-gray-300 mb-1">
+                LDL <span className="text-red-400">*</span>
               </label>
               <input
                 type="number"
@@ -263,28 +325,63 @@ export default function DiabeticPage() {
                 value={formData.LDL}
                 onChange={handleChange}
                 step="0.1"
-                className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-colors"
-                placeholder="Enter value"
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.LDL ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                placeholder="Enter LDL level"
               />
+              {errors.LDL && <p className="mt-1 text-sm text-red-400">{errors.LDL}</p>}
             </div>
-
+            
+            <div>
+              <label htmlFor="Cr" className="block text-sm font-medium text-gray-300 mb-1">
+                Creatinine (Cr) <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="number"
+                id="Cr"
+                name="Cr"
+                value={formData.Cr}
+                onChange={handleChange}
+                step="0.1"
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.Cr ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                placeholder="Enter creatinine level"
+              />
+              {errors.Cr && <p className="mt-1 text-sm text-red-400">{errors.Cr}</p>}
+            </div>
+            
+            <div>
+              <label htmlFor="BUN" className="block text-sm font-medium text-gray-300 mb-1">
+                BUN <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="number"
+                id="BUN"
+                name="BUN"
+                value={formData.BUN}
+                onChange={handleChange}
+                step="0.1"
+                className={`w-full px-4 py-2 bg-[#0f0f1a] border rounded-lg ${errors.BUN ? 'border-red-500' : 'border-[#2a2a3e]'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                placeholder="Enter BUN level"
+              />
+              {errors.BUN && <p className="mt-1 text-sm text-red-400">{errors.BUN}</p>}
+            </div>
+            
             <div className="md:col-span-2">
               <button
                 type="submit"
                 disabled={loading || fetchingData}
-                className="w-full px-6 py-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-purple-500/50 disabled:to-pink-500/50 text-white font-semibold rounded-lg transition-all shadow-lg shadow-purple-500/30 hover:shadow-purple-500/40 disabled:cursor-not-allowed"
+                className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Analyzing...' : 'Run Assessment'}
+                {fetchingData ? 'Loading data...' : loading ? 'Submitting...' : 'Submit Diabetic Test'}
               </button>
             </div>
           </form>
         </div>
         
         {result && (
-          <div className="bg-white border-2 border-slate-200 rounded-2xl p-8 shadow-lg">
-            <h2 className="text-2xl font-bold text-slate-900 mb-6">Assessment Results</h2>
-            <div className="bg-slate-50 border-2 border-slate-200 rounded-lg p-6">
-              <pre className="text-slate-900 whitespace-pre-wrap break-words font-mono text-sm overflow-auto max-h-96">
+          <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
+            <h2 className="text-xl font-bold text-white mb-4">Test Results</h2>
+            <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4">
+              <pre className="text-white whitespace-pre-wrap break-words">
                 {typeof result === 'object' ? JSON.stringify(result, null, 2) : result}
               </pre>
             </div>

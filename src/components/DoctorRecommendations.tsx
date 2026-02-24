@@ -22,18 +22,7 @@ const DoctorRecommendations: React.FC<DoctorRecommendationsProps> = ({
   formatDate,
 }) => {
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden">
-
-      {/* Header with Gradient */}
-      <div className="bg-gradient-to-r from-cyan-500 to-blue-600 p-6 text-white">
-        <h2 className="text-2xl font-bold">
-          Doctor Recommendations
-        </h2>
-        <p className="text-sm opacity-90">
-          Clinical advice and follow-up guidance
-        </p>
-      </div>
-
+    <div className="overflow-hidden">
       {/* Content */}
       <div className="p-6 space-y-4 max-h-[500px] overflow-y-auto">
 

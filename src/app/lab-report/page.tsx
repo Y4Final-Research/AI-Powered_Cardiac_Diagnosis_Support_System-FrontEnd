@@ -45,14 +45,14 @@ export default function Dashboard() {
       </div>
     );
   }
-
+//conmmet
   const assessments = [
     {
       id: 1,
       title: 'Lab Report Upload & Analysis',
       description: 'Upload medical documents and get AI-powered analysis of your lab results',
       icon: Upload,
-      href: '/analysis',
+      href: '/lab-reports',
       color: 'from-amber-500 to-orange-500',
       bgColor: 'from-amber-50 to-orange-50',
     },
