@@ -45,7 +45,7 @@ export function Sidebar() {
       {
         title: 'Patient History',
         icon: RiHistoryLine,
-        url: '/lab-reports/history',
+        url: '/patient-history',
       },
       {
         title: 'Settings',
