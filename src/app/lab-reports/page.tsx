@@ -354,7 +354,7 @@ Respond ONLY in valid JSON:
 `;
 
       // 5️⃣ Call Gemini API
-      const GEMINI_API_KEY = "AIzaSyDsKU4PtMgvJNsHJiCqA0s-dGeWBYpy5CQ";
+      const GEMINI_API_KEY = "AIzaSyAH_tswaGcXv5qZcwfYKi6EWp2KTVXUgD0";
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,

@@ -13,6 +13,7 @@ export default function HomePage() {
       color: 'from-blue-500 to-cyan-500',
       bgColor: 'from-blue-50 to-cyan-50',
       borderColor: 'border-blue-300/50',
+      href: '/ecg-analysis',
       features: ['Real-time processing', 'Noise filtering', 'Signal normalization'],
     },
     {
