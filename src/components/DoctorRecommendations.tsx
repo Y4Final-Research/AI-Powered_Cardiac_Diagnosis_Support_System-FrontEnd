@@ -1,4 +1,7 @@
 import React from 'react';
+import { Skeleton } from './ui/skeleton';
+import { Card, CardContent } from './ui/card';
+import { Avatar, AvatarFallback } from './ui/avatar';
 
 interface Recommendation {
   id: string;
@@ -22,64 +25,69 @@ const DoctorRecommendations: React.FC<DoctorRecommendationsProps> = ({
   formatDate,
 }) => {
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden">
+  <Card className="rounded-2xl shadow-md">
+    <CardContent className="p-6 space-y-4">
 
-      {/* Header with Gradient */}
-      <div className="bg-gradient-to-r from-cyan-500 to-blue-600 p-6 text-white">
-        <h2 className="text-2xl font-bold">
-          Doctor Recommendations
-        </h2>
-        <p className="text-sm opacity-90">
-          Clinical advice and follow-up guidance
-        </p>
-      </div>
+      {loadingRecommendations ? (
 
-      {/* Content */}
-      <div className="p-6 space-y-4 max-h-[500px] overflow-y-auto">
+        <div className="space-y-4">
+          <Skeleton className="h-16 w-full rounded-xl" />
+          <Skeleton className="h-16 w-full rounded-xl" />
+          <Skeleton className="h-16 w-full rounded-xl" />
+        </div>
 
-        {loadingRecommendations ? (
-          <div className="text-center text-gray-500 py-6 animate-pulse">
-            Loading recommendations...
-          </div>
-        ) : doctorRecommendations.length === 0 ? (
-          <div className="text-center text-gray-400 py-6 border border-dashed rounded-xl">
-            No recommendations available yet
-          </div>
-        ) : (
-          doctorRecommendations.map((rec) => (
-            <div
-              key={rec.id}
-              className="bg-gray-50 border border-gray-200 hover:shadow-md transition-all duration-200 rounded-xl p-5"
-            >
+      ) : doctorRecommendations.length === 0 ? (
+
+        <div className="text-center text-muted-foreground py-6 border border-dashed rounded-xl">
+          No recommendations available yet
+        </div>
+
+      ) : (
+
+        doctorRecommendations.map((rec) => (
+          <Card
+            key={rec.id}
+            className="rounded-xl transition-all duration-200 hover:shadow-md"
+          >
+            <CardContent className="p-5 space-y-3">
+
               {/* Doctor Info */}
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between">
+
                 <div className="flex items-center gap-3">
 
-                  {/* Doctor Avatar */}
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 flex items-center justify-center text-white font-semibold">
-                    {rec.doctor_name.charAt(0).toUpperCase()}
-                  </div>
+                  <Avatar>
+                    <AvatarFallback className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
+                      {rec.doctor_name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
 
                   <div>
-                    <p className="font-semibold text-gray-800">
+                    <p className="font-semibold">
                       Dr. {rec.doctor_name}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       {formatDate(rec.date)}
                     </p>
                   </div>
+
                 </div>
+
               </div>
 
               {/* Recommendation Text */}
-              <p className="text-gray-700 leading-relaxed text-sm md:text-base">
+              <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
                 {rec.recommendation}
               </p>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
+
+            </CardContent>
+          </Card>
+        ))
+
+      )}
+
+    </CardContent>
+  </Card>
   );
 };
 

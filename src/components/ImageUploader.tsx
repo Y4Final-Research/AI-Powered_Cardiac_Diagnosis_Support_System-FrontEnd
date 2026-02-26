@@ -1,13 +1,26 @@
-import React from 'react';
+"use client"
+
+import React from "react"
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
+import { RiEmpathizeLine, RiFlashlightLine, RiUpload2Line } from "@remixicon/react"
+
+
 
 interface ImageUploaderProps {
-  uploadedFile: File | null;
-  filePreview: string | null;
-  analyzing: boolean;
-  handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleRemoveFile: () => void;
-  handleAnalyzeImage: () => void;
-  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  uploadedFile: File | null
+  filePreview: string | null
+  analyzing: boolean
+  handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void
+  handleRemoveFile: () => void
+  handleAnalyzeImage: () => void
+  fileInputRef: React.RefObject<HTMLInputElement | null>
 }
 
 const ImageUploader: React.FC<ImageUploaderProps> = ({
@@ -17,35 +30,23 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
   handleFileUpload,
   handleRemoveFile,
   handleAnalyzeImage,
-  fileInputRef
+  fileInputRef,
 }) => {
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden">
+    <Card className="shadow-md border border-slate-200 rounded-2xl">
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-cyan-500 to-blue-600 p-6 flex items-center">
-        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mr-3">
-          <svg
-            className="w-6 h-6 text-white"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-            />
-          </svg>
-        </div>
-        <h2 className="text-2xl font-bold text-white">Image Upload</h2>
-      </div>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-3 text-lg">
+          <RiEmpathizeLine size={22} />
+          Upload Lab Report
+        </CardTitle>
+      </CardHeader>
 
-      {/* Body */}
-      <div className="p-6 space-y-4">
+      <CardContent className="p-6">
         {!uploadedFile ? (
-          <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-cyan-500 transition-colors cursor-pointer">
+          <div className="border-2 border-dashed border-slate-300 rounded-xl p-10 text-center hover:border-cyan-500 transition-colors cursor-pointer">
+
             <input
               ref={fileInputRef}
               type="file"
@@ -54,102 +55,80 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
               className="hidden"
               id="image-upload"
             />
+
             <label
               htmlFor="image-upload"
               className="flex flex-col items-center gap-4 cursor-pointer"
             >
-              <svg
-                className="w-16 h-16 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                />
-              </svg>
+              <RiUpload2Line size={56} className="text-slate-400" />
+
               <div>
-                <p className="text-gray-700 font-medium">
-                  Click to upload Image
+                <p className="font-medium text-slate-700">
+                  Click to upload image
                 </p>
-                <p className="text-gray-500 text-sm mt-1">
-                  or drag and drop (JPG, PNG, etc.)
+                <p className="text-sm text-slate-500 mt-1">
+                  JPG, PNG, or medical scan files
                 </p>
               </div>
             </label>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-5">
+
             {/* File Info */}
-            <div className="bg-gray-50 border border-cyan-200 rounded-xl p-4 flex items-center justify-between">
+            <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg p-4">
+
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-cyan-100 rounded-full flex items-center justify-center">
-                  <svg
-                    className="w-5 h-5 text-cyan-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
+                <RiUpload2Line className="text-green-500" size={20} />
                 <div>
-                  <p className="text-cyan-600 font-medium">Image Loaded</p>
-                  <p className="text-gray-600 text-sm">{uploadedFile.name}</p>
+                  <p className="font-medium text-slate-800">
+                    Image Loaded
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    {uploadedFile.name}
+                  </p>
                 </div>
               </div>
-              <button
+
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={handleRemoveFile}
-                className="text-red-500 hover:text-red-400 transition-colors"
               >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
+                ✕
+              </Button>
             </div>
 
-            {/* Image Preview */}
+            <Separator />
+
+            {/* Preview */}
             {filePreview && (
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
                 <img
                   src={filePreview}
-                  className="w-full h-96 object-contain rounded-lg"
-                  alt="Uploaded medical preview"
+                  alt="Uploaded preview"
+                  className="w-full h-96 object-contain rounded-md"
                 />
               </div>
             )}
 
             {/* Analyze Button */}
-            <button
+            <Button
               onClick={handleAnalyzeImage}
               disabled={analyzing}
-              className="w-full bg-cyan-500 hover:bg-blue-500 disabled:bg-gray-300 text-white font-semibold py-3 rounded-xl transition-colors shadow-md"
+              className="w-full text-base font-semibold flex items-center justify-center gap-2"
+              size="lg"
             >
-              {analyzing ? 'Analyzing...' : 'Analyze Image'}
-            </button>
+              <RiFlashlightLine size={18} />
+              {analyzing ? "Analyzing..." : "Analyze Image"}
+            </Button>
+
           </div>
         )}
-      </div>
-    </div>
-  );
-};
 
-export default ImageUploader;
+      </CardContent>
+    </Card>
+  )
+}
+
+export default ImageUploader

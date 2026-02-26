@@ -26,26 +26,6 @@ const PatientHistorySection: React.FC<PatientHistorySectionProps> = ({
 }) => {
   return (
     <div className="bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden">
-
-      {/* Header */}
-      <div className="bg-gradient-to-r from-cyan-500 to-blue-600 p-6 flex items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-white">
-            Patient History
-          </h2>
-          <p className="text-sm text-white/90">
-            Review previous reports and lab trends
-          </p>
-        </div>
-
-        <button
-          onClick={() => setShowCharts(!showCharts)}
-          className="ml-auto px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl text-sm transition"
-        >
-          {showCharts ? 'List View' : 'Chart View'}
-        </button>
-      </div>
-
       <div className="p-6">
 
         {showCharts ? (

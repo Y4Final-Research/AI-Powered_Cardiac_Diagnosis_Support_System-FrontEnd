@@ -2,6 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Patient {
   id: string;
@@ -458,34 +463,34 @@ Respond ONLY in valid JSON:
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] p-6">
+    <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-white">Doctor Dashboard</h1>
-            <p className="text-gray-400 mt-1">Welcome, {user.name}</p>
+            <h1 className="text-3xl font-bold">Doctor Dashboard</h1>
+            <p className="text-muted-foreground mt-1">Welcome, {user.name}</p>
           </div>
           <div className="flex gap-4">
-            <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+            <Button variant="default">
               Profile
-            </button>
-            <button 
+            </Button>
+            <Button 
+              variant="destructive"
               onClick={handleLogout}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
             >
               Logout
-            </button>
+            </Button>
           </div>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
+          <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm mb-1">Total Patients</p>
-                <p className="text-3xl font-bold text-white">{patients.length}</p>
+                <p className="text-muted-foreground text-sm mb-1">Total Patients</p>
+                <p className="text-3xl font-bold">{patients.length}</p>
               </div>
               <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -493,13 +498,13 @@ Respond ONLY in valid JSON:
                 </svg>
               </div>
             </div>
-          </div>
+          </Card>
 
-          <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
+          <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm mb-1">Pending Reviews</p>
-                <p className="text-3xl font-bold text-white">0</p>
+                <p className="text-muted-foreground text-sm mb-1">Pending Reviews</p>
+                <p className="text-3xl font-bold">0</p>
               </div>
               <div className="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -507,13 +512,13 @@ Respond ONLY in valid JSON:
                 </svg>
               </div>
             </div>
-          </div>
+          </Card>
 
-          <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
+          <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm mb-1">Completed Reviews</p>
-                <p className="text-3xl font-bold text-white">0</p>
+                <p className="text-muted-foreground text-sm mb-1">Completed Reviews</p>
+                <p className="text-3xl font-bold">0</p>
               </div>
               <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -521,165 +526,89 @@ Respond ONLY in valid JSON:
                 </svg>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
 
         {/* Patient Selection and Image Upload Section */}
-        <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
+        <Card className="p-6">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
               <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-white">PATIENT ANALYSIS</h2>
+            <h2 className="text-xl font-bold">PATIENT ANALYSIS</h2>
           </div>
 
           {/* Patient Selection */}
           <div className="mb-6">
-            <label htmlFor="patient-select" className="block text-sm font-medium text-gray-300 mb-2">
+            <label htmlFor="patient-select" className="block text-sm font-medium mb-2">
               Select Patient
             </label>
-            <select
-              id="patient-select"
-              value={selectedPatient}
-              onChange={(e) => {
-                // Clear previous analysis results when changing patients
-                setTestResult(null);
-                setLabComparison(null);
-                setPatientInfo(null);
-                setRecommendedTests(null);
-                setSelectedPatientHistory(null);
-                setSelectedPatient(e.target.value);
-              }}
-              className="w-full bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
-            >
-              <option value="">-- Select a patient --</option>
-              {patients.map((patient) => (
-                <option key={patient.id} value={patient.id}>
-                  {patient.name} ({patient.email})
-                </option>
-              ))}
-            </select>
+            <Select value={selectedPatient} onValueChange={(value) => {
+              setTestResult(null)
+              setLabComparison(null)
+              setRecommendedTests(null)
+              setSelectedPatientHistory(null)
+              setSelectedPatient(value)
+            }}>
+              <SelectTrigger id="patient-select">
+                <SelectValue placeholder="-- Select a patient --" />
+              </SelectTrigger>
+              <SelectContent>
+                {patients.map((patient) => (
+                  <SelectItem key={patient.id} value={patient.id}>
+                    {patient.name} ({patient.email})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Patient History Section */}
           {selectedPatient && (
-            <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6 mb-6">
+            <Card className="p-6 mb-6 border">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-purple-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
+                  <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h2 className="text-xl font-bold text-white">PATIENT HISTORY</h2>
+                <h2 className="text-xl font-bold">PATIENT HISTORY</h2>
               </div>
               
               <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
                 {loadingPatientHistory ? (
-                  <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4 text-center text-gray-400">
+                  <div className="bg-muted border border-border rounded-lg p-4 text-center text-muted-foreground">
                     Loading patient history...
                   </div>
                 ) : patientHistory.length === 0 ? (
-                  <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4 text-center text-gray-400">
+                  <div className="bg-muted border border-border rounded-lg p-4 text-center text-muted-foreground">
                     No patient history available
                   </div>
                 ) : (
-                  patientHistory.map((history, index) => {
-                    // Parse the analysis_result to get patient info
-                    let patientInfo = null;
-                    let labComparison = null;
-                    let summary = '';
-                    
-                    try {
-                      // Check if analysis_result exists and is not null/undefined
-                      if (history.analysis_result) {
-                        const parsedResult = typeof history.analysis_result === 'string' 
-                          ? JSON.parse(history.analysis_result) 
-                          : history.analysis_result;
-                        
-                        patientInfo = parsedResult?.patientInfo || null;
-                        labComparison = parsedResult?.labComparison || null;
-                        summary = parsedResult?.summary || '';
-                      }
-                    } catch (e) {
-                      console.error('Error parsing analysis result:', e);
-                      // Set defaults if parsing fails
-                      patientInfo = null;
-                      labComparison = null;
-                      summary = '';
-                    }
-                    
-                    return (
-                      <div
-                        key={history.id || index}
-                        onClick={() => loadPatientHistory(history)}
-                        className={`bg-[#0f0f1a] border rounded-lg p-4 transition-colors cursor-pointer ${
-                          selectedPatientHistory === history 
-                            ? 'border-purple-500 shadow-lg shadow-purple-500/20' 
-                            : 'border-[#2a2a3e] hover:border-purple-500/50'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <p className="text-white font-medium">{summary || 'Medical Report'}</p>
-                            <p className="text-gray-400 text-sm">
-                              {new Date(history.created_at || history.timestamp || '').toLocaleString()}
-                            </p>
-                          </div>
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              labComparison && labComparison.length > 0 && labComparison.every((item: any) => item.status === 'Normal')
-                                ? 'bg-green-500/20 text-green-400' 
-                                : 'bg-yellow-500/20 text-yellow-400'
-                            }`}
-                          >
-                            {labComparison && labComparison.length > 0 && labComparison.every((item: any) => item.status === 'Normal') 
-                              ? 'Normal' 
-                              : 'Abnormal'}
-                          </span>
-                        </div>
-                        <p className="text-gray-400 text-sm">
-                          {patientInfo 
-                            ? `Age: ${patientInfo.age || 'N/A'}, Gender: ${patientInfo.gender || 'N/A'}` 
-                            : 'Auto-generated Report'}
-                        </p>
-                        {summary && (
-                          <p className="text-gray-300 text-sm mt-2 line-clamp-2">
-                            {summary}
+                  patientHistory.map((history, index) => (
+                    <Card key={history.id || index} className="p-4 cursor-pointer hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="font-medium">{history.name || 'Medical Report'}</p>
+                          <p className="text-muted-foreground text-sm">
+                            {new Date(history.created_at || history.timestamp || '').toLocaleString()}
                           </p>
-                        )}
-                        {selectedPatientHistory === history && (
-                          <div className="mt-3 pt-3 border-t border-[#2a2a3e]">
-                            <p className="text-purple-400 text-xs font-medium flex items-center gap-1">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              Loaded - Click to reload
-                            </p>
-                          </div>
-                        )}
+                        </div>
+                        <Badge variant="secondary">Normal</Badge>
                       </div>
-                    );
-                  })
+                      <p className="text-muted-foreground text-sm">Auto-generated Report</p>
+                    </Card>
+                  ))
                 )}
               </div>
-            </div>
+            </Card>
           )}
 
           {/* Image Upload */}
           {!uploadedFile ? (
-            <div className="border-2 border-dashed border-[#2a2a3e] rounded-lg p-8 text-center hover:border-green-500 transition-colors">
+            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -693,24 +622,14 @@ Respond ONLY in valid JSON:
                 htmlFor="image-upload"
                 className={`cursor-pointer flex flex-col items-center gap-4 ${!selectedPatient ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <svg
-                  className="w-16 h-16 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                  />
+                <svg className="w-16 h-16 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                 </svg>
                 <div>
-                  <p className="text-gray-300 font-medium">
+                  <p className="font-medium">
                     {selectedPatient ? 'Click to upload Image' : 'Please select a patient first'}
                   </p>
-                  <p className="text-gray-500 text-sm mt-1">
+                  <p className="text-muted-foreground text-sm mt-1">
                     {selectedPatient && 'or drag and drop (JPG, PNG, etc.)'}
                   </p>
                 </div>
@@ -718,205 +637,143 @@ Respond ONLY in valid JSON:
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="bg-[#0f0f1a] border border-green-500/50 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
+              <Card className="p-4 border-green-500/50">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-green-500/20 rounded flex items-center justify-center">
-                      <svg
-                        className="w-5 h-5 text-green-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
+                      <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
                     <div>
                       <p className="text-green-400 font-medium">IMAGE LOADED</p>
-                      <p className="text-gray-400 text-sm">{uploadedFile.name}</p>
+                      <p className="text-muted-foreground text-sm">{uploadedFile.name}</p>
                     </div>
                   </div>
                   <button
                     onClick={handleRemoveFile}
                     className="text-red-400 hover:text-red-300 transition-colors"
                   >
-                    <svg
-                      className="w-6 h-6"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
-              </div>
+              </Card>
 
               {/* Image Preview */}
               {filePreview && (
-                <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4">
-                  <img
-                    src={filePreview}
-                    className="w-full h-96 object-contain rounded"
-                    alt="Uploaded medical image preview"
-                  />
-                </div>
+                <Card className="p-4">
+                  <img src={filePreview} className="w-full h-96 object-contain rounded" alt="Uploaded medical image preview" />
+                </Card>
               )}
 
               {/* Loading State */}
               {loading && (
-                <div className="bg-[#0f0f1a] border border-blue-500/30 rounded-lg p-4 text-center">
-                  <p className="text-blue-400">Analyzing medical document...</p>
-                </div>
+                <Card className="p-4 border-blue-500/30">
+                  <p className="text-blue-400 text-center">Analyzing medical document...</p>
+                </Card>
               )}
             </div>
           )}
 
-          {/* Test Result - Always visible when data exists */}
+          {/* Test Result */}
           {testResult && !loading && (
-            <div className="bg-[#0f0f1a] border border-blue-500/30 rounded-lg p-4">
-              <h3 className="text-white font-semibold mb-2">Analysis Result</h3>
-              <p className="text-gray-300 leading-relaxed">{testResult}</p>
-            </div>
+            <Card className="p-4 border-blue-500/30">
+              <h3 className="font-semibold mb-2">Analysis Result</h3>
+              <p className="leading-relaxed text-muted-foreground">{testResult}</p>
+            </Card>
           )}
 
-          {/* Lab Comparison Table - Always visible when data exists */}
+          {/* Lab Comparison Table */}
           {labComparison && labComparison.length > 0 && (
-            <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4">
-              <h3 className="text-white font-semibold mb-4">Lab Comparison</h3>
+            <Card className="p-4">
+              <h3 className="font-semibold mb-4">Lab Comparison</h3>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left text-gray-400">
-                  <thead className="text-xs text-gray-300 uppercase bg-[#1a1a2e] border-b border-[#2a2a3e]">
-                    <tr>
-                      <th scope="col" className="px-4 py-3">Test</th>
-                      <th scope="col" className="px-4 py-3">Actual Value</th>
-                      <th scope="col" className="px-4 py-3">Normal Range</th>
-                      <th scope="col" className="px-4 py-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {labComparison.map((item: any, index: number) => (
-                      <tr
-                        key={index}
-                        className="border-b border-[#2a2a3e] hover:bg-[#202030] transition-colors"
-                      >
-                        <td className="px-4 py-3 font-medium text-white">{item.test}</td>
-                        <td className="px-4 py-3">
-                          <span className="px-2 py-1 bg-[#1a1a2e] rounded text-white">
-                            {item.actualValue}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">{item.normalRange}</td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              item.status === 'Normal'
-                                ? 'bg-green-500/20 text-green-400'
-                                : item.status === 'High'
-                                ? 'bg-red-500/20 text-red-400'
-                                : 'bg-yellow-500/20 text-yellow-400'
-                            }`}
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Test</TableHead>
+                      <TableHead>Actual Value</TableHead>
+                      <TableHead>Normal Range</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {labComparison.map((item: {
+                      test: string;
+                      actualValue: number | string;
+                      normalRange: string;
+                      status: 'Normal' | 'High' | 'Low';
+                    }, index: number) => (
+                      <TableRow key={index}>
+                        <TableCell className="font-medium">{item.test}</TableCell>
+                        <TableCell>{item.actualValue}</TableCell>
+                        <TableCell>{item.normalRange}</TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={item.status === 'Normal' ? 'default' : item.status === 'High' ? 'destructive' : 'secondary'}
+                            className={item.status === 'Normal' ? 'bg-green-500/20 text-green-400' : item.status === 'High' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}
                           >
                             {item.status}
-                          </span>
-                        </td>
-                      </tr>
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
-            </div>
+            </Card>
           )}
 
-          {/* Recommended Next Tests Section - Always visible when data exists */}
+          {/* Recommended Next Tests Section */}
           {recommendedTests !== null && (
-            <div className="bg-[#0f0f1a] border border-purple-500/30 rounded-lg p-4">
-              <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-                <svg
-                  className="w-5 h-5 text-purple-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-                  />
+            <Card className="p-4 border-purple-500/30">
+              <h3 className="font-semibold mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
                 Recommended Next Tests
               </h3>
               {recommendedTests.length === 0 ? (
                 <div className="text-center py-4">
                   <div className="flex items-center justify-center mb-2">
-                    <svg
-                      className="w-10 h-10 text-green-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
+                    <svg className="w-10 h-10 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <p className="text-green-400 font-medium">
-                    No Additional Tests Required
-                  </p>
-                  <p className="text-gray-400 text-sm mt-1">
-                    Based on the lab report analysis, all values are within normal range. No follow-up tests are needed at this time.
-                  </p>
+                  <p className="text-green-400 font-medium">No Additional Tests Required</p>
+                  <p className="text-muted-foreground text-sm mt-1">Based on the lab report analysis, all values are within normal range.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-gray-300 text-sm">
-                    Based on the lab report analysis, the following tests are recommended:
-                  </p>
+                  <p className="text-muted-foreground text-sm">Based on the lab report analysis, the following tests are recommended:</p>
                   <ul className="space-y-2">
                     {recommendedTests.map((test, index) => (
-                      <li
-                        key={index}
-                        className="flex items-start gap-3 p-3 bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg hover:border-purple-500/50 transition-colors"
-                      >
+                      <li key={index} className="flex items-start gap-3 p-3 bg-muted border border-border rounded-lg hover:border-primary/50 transition-colors">
                         <div className="w-6 h-6 bg-purple-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <span className="text-purple-400 text-xs font-bold">
-                            {index + 1}
-                          </span>
+                          <span className="text-purple-400 text-xs font-bold">{index + 1}</span>
                         </div>
-                        <p className="text-white font-medium">{test}</p>
+                        <p className="font-medium">{test}</p>
                       </li>
                     ))}
                   </ul>
                 </div>
               )}
-            </div>
+            </Card>
           )}
-        </div>
+        </Card>
 
         {/* Doctor Recommendation Section */}
         {selectedPatient && (
-          <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
+          <Card className="p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-cyan-500/20 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
-              <h2 className="text-xl font-bold text-white">DOCTOR RECOMMENDATION</h2>
+              <h2 className="text-xl font-bold">DOCTOR RECOMMENDATION</h2>
             </div>
 
             <form onSubmit={handleSubmitRecommendation} className="space-y-4">
@@ -933,7 +790,7 @@ Respond ONLY in valid JSON:
               )}
 
               <div>
-                <label htmlFor="recommendation" className="block text-sm font-medium text-gray-300 mb-2">
+                <label htmlFor="recommendation" className="block text-sm font-medium mb-2">
                   Recommendation
                 </label>
                 <textarea
@@ -941,52 +798,52 @@ Respond ONLY in valid JSON:
                   value={recommendation}
                   onChange={(e) => setRecommendation(e.target.value)}
                   rows={6}
-                  className="w-full bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors resize-none"
+                  className="w-full bg-muted border border-border rounded-lg px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors resize-none"
                   placeholder="Enter your medical recommendation for the patient..."
                   required
                 />
               </div>
 
-              <button
+              <Button
                 type="submit"
                 disabled={submittingRecommendation || !selectedPatient}
-                className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:bg-cyan-600/50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-colors duration-200 shadow-lg shadow-cyan-500/20"
+                className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:bg-cyan-600/50"
               >
                 {submittingRecommendation ? 'Submitting...' : 'Submit Recommendation'}
-              </button>
+              </Button>
             </form>
-          </div>
+          </Card>
         )}
 
         {/* Doctor Information */}
-        <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-6">
+        <Card className="p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
               <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-white">DOCTOR INFORMATION</h2>
+            <h2 className="text-xl font-bold">DOCTOR INFORMATION</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4">
-              <p className="text-gray-400 text-sm mb-1">Name</p>
-              <p className="text-white font-medium">{user.name}</p>
-            </div>
-            <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4">
-              <p className="text-gray-400 text-sm mb-1">Email</p>
-              <p className="text-white font-medium">{user.email || 'N/A'}</p>
-            </div>
-            <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4">
-              <p className="text-gray-400 text-sm mb-1">Role</p>
-              <p className="text-white font-medium capitalize">{user.role}</p>
-            </div>
-            <div className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-lg p-4">
-              <p className="text-gray-400 text-sm mb-1">User ID</p>
-              <p className="text-white font-medium text-sm">{user.user_id}</p>
-            </div>
+            <Card className="p-4">
+              <p className="text-muted-foreground text-sm mb-1">Name</p>
+              <p className="font-medium">{user.name}</p>
+            </Card>
+            <Card className="p-4">
+              <p className="text-muted-foreground text-sm mb-1">Email</p>
+              <p className="font-medium">{user.email || 'N/A'}</p>
+            </Card>
+            <Card className="p-4">
+              <p className="text-muted-foreground text-sm mb-1">Role</p>
+              <p className="font-medium capitalize">{user.role}</p>
+            </Card>
+            <Card className="p-4">
+              <p className="text-muted-foreground text-sm mb-1">User ID</p>
+              <p className="font-medium text-sm">{user.user_id}</p>
+            </Card>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

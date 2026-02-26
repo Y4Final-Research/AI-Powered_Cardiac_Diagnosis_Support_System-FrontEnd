@@ -1,32 +1,39 @@
-"use client";
+'use client'
 
-import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Chart imports
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler } from 'chart.js';
-import { Line, Bar } from 'react-chartjs-2';
-import ImageUploader from "@/components/ImageUploader";
-import DoctorRecommendations from "@/components/DoctorRecommendations";
-import DiagnosticButtons from "@/components/DiagnosticButtons";
-import PatientHistorySection from "@/components/PatientHistorySection";
-import LabComparisonTable from "@/components/LabComparisonTable";
-import TestResultCard from "@/components/TestResultCard";
-import RecommendedTestsCard from "@/components/RecommendedTestsCard";
+import DiagnosticButtons from '@/components/DiagnosticButtons'
+import DoctorRecommendations from '@/components/DoctorRecommendations'
+import ImageUploader from '@/components/ImageUploader'
+import LabComparisonTable from '@/components/LabComparisonTable'
+import RecommendedTestsCard from '@/components/RecommendedTestsCard'
+import { Sidebar } from '@/components/sideBar'
+import TestResultCard from '@/components/TestResultCard'
+import {
+  Card,
+  CardContent,
+} from '@/components/ui/card'
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs'
+import router from 'next/router'
+import { useState, useRef, useEffect } from 'react'
+import DiabeticPage from '@/components/Diabetes'
+import HeartPage from '@/components/heart'
+import CardiacPage from '@/components/cardiac'
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
-
+interface TestCard {
+  id: string
+  title: string
+  icon: React.ReactNode
+  bgColor: string
+  borderColor: string
+  iconBgColor: string
+  iconColor: string
+}
 interface Recommendation {
   id: string;
   doctor_id: string;
@@ -37,24 +44,22 @@ interface Recommendation {
   recommendation: string;
 }
 
-export default function Home() {
-  const router = useRouter();
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [filePreview, setFilePreview] = useState<string | null>(null);
+export default function Page() {
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [filePreview, setFilePreview] = useState<string | null>(null)
   const [testResult, setTestResult] = useState<string | null>(null);
   const [patientInfo, setPatientInfo] = useState<any>(null);
   const [labComparison, setLabComparison] = useState<any>(null);
+  const [doctorRecommendations, setDoctorRecommendations] = useState<Recommendation[]>([]);
   const [jsonGroup1, setJsonGroup1] = useState<any>(null);
   const [jsonGroup2, setJsonGroup2] = useState<any>(null);
   const [recommendedTests, setRecommendedTests] = useState<string[] | null>(null);
-  const [doctorRecommendations, setDoctorRecommendations] = useState<Recommendation[]>([]);
-  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const [patientHistoryData, setPatientHistoryData] = useState<any[]>([]);
   const [loadingPatientHistory, setLoadingPatientHistory] = useState(false);
   const [selectedPatientHistory, setSelectedPatientHistory] = useState<any>(null);
-  const [showCharts, setShowCharts] = useState(false);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [analyzing, setAnalyzing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,6 +87,149 @@ export default function Home() {
     const reader = new FileReader();
     reader.onload = () => setFilePreview(reader.result as string);
     reader.readAsDataURL(file);
+  };
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+   // Generate chart data from patient history
+  const generateLabTrendData = () => {
+    if (!patientHistoryData || patientHistoryData.length === 0) return null;
+
+    // Sort history by date to show chronological trend
+    const sortedHistory = [...patientHistoryData].sort((a, b) =>
+      new Date(a.createdAt || a.date || a.created_at || a.timestamp).getTime() -
+      new Date(b.createdAt || b.date || b.created_at || b.timestamp).getTime()
+    );
+
+    // Extract lab values for key metrics
+    const labels = sortedHistory.map(record => {
+      const date = new Date(record.createdAt || record.date || record.created_at || record.timestamp);
+      return `${date.getDate()}/${date.getMonth() + 1}`; // DD/MM format
+    });
+
+    // Prepare datasets for common lab values
+    const totalCholesterolData = sortedHistory.map(record => {
+      const lab = record.labComparison?.find((item: any) =>
+        item.test.toLowerCase().includes('total cholesterol')
+      );
+      return lab ? lab.actualValue : null;
+    });
+
+    const ldlData = sortedHistory.map(record => {
+      const lab = record.labComparison?.find((item: any) =>
+        item.test.toLowerCase().includes('ldl')
+      );
+      return lab ? lab.actualValue : null;
+    });
+
+    const hdlData = sortedHistory.map(record => {
+      const lab = record.labComparison?.find((item: any) =>
+        item.test.toLowerCase().includes('hdl')
+      );
+      return lab ? lab.actualValue : null;
+    });
+
+    const tgData = sortedHistory.map(record => {
+      const lab = record.labComparison?.find((item: any) =>
+        item.test.toLowerCase().includes('triglycerides') || item.test.toLowerCase().includes('tg')
+      );
+      return lab ? lab.actualValue : null;
+    });
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Total Cholesterol',
+          data: totalCholesterolData,
+          borderColor: 'rgb(75, 192, 192)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          tension: 0.1,
+        },
+        {
+          label: 'LDL Cholesterol',
+          data: ldlData,
+          borderColor: 'rgb(255, 99, 132)',
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          tension: 0.1,
+        },
+        {
+          label: 'HDL Cholesterol',
+          data: hdlData,
+          borderColor: 'rgb(54, 162, 235)',
+          backgroundColor: 'rgba(54, 162, 235, 0.2)',
+          tension: 0.1,
+        },
+        {
+          label: 'Triglycerides',
+          data: tgData,
+          borderColor: 'rgb(255, 205, 86)',
+          backgroundColor: 'rgba(255, 205, 86, 0.2)',
+          tension: 0.1,
+        },
+      ],
+    };
+  };
+  const generateNumericChartData = () => {
+    if (!patientHistoryData || patientHistoryData.length === 0) return null;
+
+    // Sort history by date
+    const sortedHistory = [...patientHistoryData].sort((a, b) =>
+      new Date(a.createdAt || b.date || b.created_at || b.timestamp).getTime() -
+      new Date(b.createdAt || b.date || b.created_at || b.timestamp).getTime()
+    );
+
+    const labels = sortedHistory.map(record => {
+      const date = new Date(record.createdAt || record.date || record.created_at || record.timestamp);
+      return `${date.getDate()}/${date.getMonth() + 1}`; // DD/MM format
+    });
+
+    // Extract numeric values from extractedJsonGroup1
+    const ageData = sortedHistory.map(record => record.extractedJsonGroup1?.Age || null);
+    const bmiData = sortedHistory.map(record => record.extractedJsonGroup1?.BMI || null);
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Age',
+          data: ageData,
+          borderColor: 'rgb(153, 102, 255)',
+          backgroundColor: 'rgba(153, 102, 255, 0.2)',
+          tension: 0.1,
+        },
+        {
+          label: 'BMI',
+          data: bmiData,
+          borderColor: 'rgb(255, 159, 64)',
+          backgroundColor: 'rgba(255, 159, 64, 0.2)',
+          tension: 0.1,
+        }
+      ],
+    };
+  };
+
+  const handleRemoveFile = () => {
+    setUploadedFile(null);
+    setFilePreview(null);
+    setTestResult(null);
+    setLabComparison(null);
+    setPatientInfo(null);
+    setJsonGroup1(null);
+    setJsonGroup2(null);
+    setRecommendedTests(null);
+    setAnalyzing(false);
+    setSelectedPatientHistory(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleAnalyzeImage = async () => {
@@ -206,7 +354,7 @@ Respond ONLY in valid JSON:
 `;
 
       // 5️⃣ Call Gemini API
-      const GEMINI_API_KEY = "AIzaSyDNr6mBxd_3P5Cu-Uza7QCOPRUF9KnzWKk";
+      const GEMINI_API_KEY = "AIzaSyAH_tswaGcXv5qZcwfYKi6EWp2KTVXUgD0";
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -416,23 +564,6 @@ Respond ONLY in valid JSON:
       setAnalyzing(false);
     }
   };
-
-  const handleRemoveFile = () => {
-    setUploadedFile(null);
-    setFilePreview(null);
-    setTestResult(null);
-    setLabComparison(null);
-    setPatientInfo(null);
-    setJsonGroup1(null);
-    setJsonGroup2(null);
-    setRecommendedTests(null);
-    setAnalyzing(false);
-    setSelectedPatientHistory(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
   // Check authentication status
   useEffect(() => {
     const checkAuth = () => {
@@ -446,186 +577,57 @@ Respond ONLY in valid JSON:
     return () => window.removeEventListener('storage', checkAuth);
   }, []);
 
-  // Fetch doctor recommendations
-  useEffect(() => {
-    const fetchRecommendations = async () => {
-      setLoadingRecommendations(true);
-      try {
-        const { fetchDoctorRecommendations } = await import("@/services/recommendation.service");
-        const data = await fetchDoctorRecommendations();
-        // Sort by date (newest first)
-        const sortedData = data.sort((a: Recommendation, b: Recommendation) =>
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-        setDoctorRecommendations(sortedData);
-      } catch (error) {
-        console.error('Error fetching recommendations:', error);
-      } finally {
-        setLoadingRecommendations(false);
-      }
-    };
-
-    if (isLoggedIn) {
-      fetchRecommendations();
-    }
-  }, [isLoggedIn]);
-
-  // Fetch patient history
-  useEffect(() => {
-    const fetchHistory = async () => {
-      setLoadingPatientHistory(true);
-      try {
-        const { fetchPatientHistory } = await import("@/services/history.service");
-        const data = await fetchPatientHistory();
-        // Sort by date (newest first)
-        const sortedData = data.sort((a: any, b: any) =>
-          new Date(b.date || b.created_at || b.timestamp).getTime() -
-          new Date(a.date || a.created_at || a.timestamp).getTime()
-        );
-        setPatientHistoryData(sortedData);
-        console.log('Patient history data:', sortedData);
-      } catch (error) {
-        console.error('Error fetching patient history:', error);
-      } finally {
-        setLoadingPatientHistory(false);
-      }
-    };
-
-    if (isLoggedIn) {
-      fetchHistory();
-    }
-  }, [isLoggedIn]);
-
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  // Generate chart data from patient history
-  const generateLabTrendData = () => {
-    if (!patientHistoryData || patientHistoryData.length === 0) return null;
-
-    // Sort history by date to show chronological trend
-    const sortedHistory = [...patientHistoryData].sort((a, b) =>
-      new Date(a.createdAt || a.date || a.created_at || a.timestamp).getTime() -
-      new Date(b.createdAt || b.date || b.created_at || b.timestamp).getTime()
-    );
-
-    // Extract lab values for key metrics
-    const labels = sortedHistory.map(record => {
-      const date = new Date(record.createdAt || record.date || record.created_at || record.timestamp);
-      return `${date.getDate()}/${date.getMonth() + 1}`; // DD/MM format
-    });
-
-    // Prepare datasets for common lab values
-    const totalCholesterolData = sortedHistory.map(record => {
-      const lab = record.labComparison?.find((item: any) =>
-        item.test.toLowerCase().includes('total cholesterol')
-      );
-      return lab ? lab.actualValue : null;
-    });
-
-    const ldlData = sortedHistory.map(record => {
-      const lab = record.labComparison?.find((item: any) =>
-        item.test.toLowerCase().includes('ldl')
-      );
-      return lab ? lab.actualValue : null;
-    });
-
-    const hdlData = sortedHistory.map(record => {
-      const lab = record.labComparison?.find((item: any) =>
-        item.test.toLowerCase().includes('hdl')
-      );
-      return lab ? lab.actualValue : null;
-    });
-
-    const tgData = sortedHistory.map(record => {
-      const lab = record.labComparison?.find((item: any) =>
-        item.test.toLowerCase().includes('triglycerides') || item.test.toLowerCase().includes('tg')
-      );
-      return lab ? lab.actualValue : null;
-    });
-
-    return {
-      labels,
-      datasets: [
-        {
-          label: 'Total Cholesterol',
-          data: totalCholesterolData,
-          borderColor: 'rgb(75, 192, 192)',
-          backgroundColor: 'rgba(75, 192, 192, 0.2)',
-          tension: 0.1,
-        },
-        {
-          label: 'LDL Cholesterol',
-          data: ldlData,
-          borderColor: 'rgb(255, 99, 132)',
-          backgroundColor: 'rgba(255, 99, 132, 0.2)',
-          tension: 0.1,
-        },
-        {
-          label: 'HDL Cholesterol',
-          data: hdlData,
-          borderColor: 'rgb(54, 162, 235)',
-          backgroundColor: 'rgba(54, 162, 235, 0.2)',
-          tension: 0.1,
-        },
-        {
-          label: 'Triglycerides',
-          data: tgData,
-          borderColor: 'rgb(255, 205, 86)',
-          backgroundColor: 'rgba(255, 205, 86, 0.2)',
-          tension: 0.1,
-        },
-      ],
-    };
-  };
-
-  const generateNumericChartData = () => {
-    if (!patientHistoryData || patientHistoryData.length === 0) return null;
-
-    // Sort history by date
-    const sortedHistory = [...patientHistoryData].sort((a, b) =>
-      new Date(a.createdAt || b.date || b.created_at || b.timestamp).getTime() -
-      new Date(b.createdAt || b.date || b.created_at || b.timestamp).getTime()
-    );
-
-    const labels = sortedHistory.map(record => {
-      const date = new Date(record.createdAt || record.date || record.created_at || record.timestamp);
-      return `${date.getDate()}/${date.getMonth() + 1}`; // DD/MM format
-    });
-
-    // Extract numeric values from extractedJsonGroup1
-    const ageData = sortedHistory.map(record => record.extractedJsonGroup1?.Age || null);
-    const bmiData = sortedHistory.map(record => record.extractedJsonGroup1?.BMI || null);
-
-    return {
-      labels,
-      datasets: [
-        {
-          label: 'Age',
-          data: ageData,
-          borderColor: 'rgb(153, 102, 255)',
-          backgroundColor: 'rgba(153, 102, 255, 0.2)',
-          tension: 0.1,
-        },
-        {
-          label: 'BMI',
-          data: bmiData,
-          borderColor: 'rgb(255, 159, 64)',
-          backgroundColor: 'rgba(255, 159, 64, 0.2)',
-          tension: 0.1,
+    // Fetch doctor recommendations
+    useEffect(() => {
+      const fetchRecommendations = async () => {
+        setLoadingRecommendations(true);
+        try {
+          const { fetchDoctorRecommendations } = await import("@/services/recommendation.service");
+          const data = await fetchDoctorRecommendations();
+          // Sort by date (newest first)
+          const sortedData = data.sort((a: Recommendation, b: Recommendation) =>
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+          setDoctorRecommendations(sortedData);
+        } catch (error) {
+          console.error('Error fetching recommendations:', error);
+        } finally {
+          setLoadingRecommendations(false);
         }
-      ],
-    };
-  };
+      };
+  
+      if (isLoggedIn) {
+        fetchRecommendations();
+      }
+    }, [isLoggedIn]);
 
-  const labTrendData = generateLabTrendData();
+      // Fetch patient history
+      useEffect(() => {
+        const fetchHistory = async () => {
+          setLoadingPatientHistory(true);
+          try {
+            const { fetchPatientHistory } = await import("@/services/history.service");
+            const data = await fetchPatientHistory();
+            // Sort by date (newest first)
+            const sortedData = data.sort((a: any, b: any) =>
+              new Date(b.date || b.created_at || b.timestamp).getTime() -
+              new Date(a.date || a.created_at || a.timestamp).getTime()
+            );
+            setPatientHistoryData(sortedData);
+            console.log('Patient history data:', sortedData);
+          } catch (error) {
+            console.error('Error fetching patient history:', error);
+          } finally {
+            setLoadingPatientHistory(false);
+          }
+        };
+    
+        if (isLoggedIn) {
+          fetchHistory();
+        }
+      }, [isLoggedIn]);
+
+      const labTrendData = generateLabTrendData();
   const numericData = generateNumericChartData();
 
   // Handle logout
@@ -644,8 +646,8 @@ Respond ONLY in valid JSON:
   const handleLogin = () => {
     router.push('/login');
   };
-
-  // Load patient history data into display sections
+  const [activeDiagnostic, setActiveDiagnostic] = useState<string | null>(null)
+ // Load patient history data into display sections
   const loadPatientHistory = (historyItem: any) => {
     setSelectedPatientHistory(historyItem);
 
@@ -681,92 +683,114 @@ Respond ONLY in valid JSON:
     // Scroll to top to show the loaded data
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-
   return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <SidebarProvider>
+      {/* Sidebar */}
+      <Sidebar />
+      {/* Main Content with SidebarInset */}
+      <SidebarInset className="flex min-h-screen flex-col bg-slate-100">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold">
-            AI Diagnostic Dashboard
-          </h1>
-          <div className="flex gap-4">
-            {isLoggedIn ? (
-              <>
-                {/* <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
-                  Profile
-                </button> */}
-                <button
-                  onClick={handleLogout}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={handleLogin}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-              >
-                Login
-              </button>
-            )}
+        <div className="sticky top-0 z-40 bg-white border-b shadow-sm px-6 py-4">
+          <div className="flex items-center gap-4">
+            <SidebarTrigger />
+            <div>
+              <h1 className="text-2xl font-bold text-slate-800">
+                AI Diagnostic System
+              </h1>
+              <p className="text-sm text-slate-500">
+                Advanced AI-powered medical diagnosis assistance
+              </p>
+            </div>
           </div>
         </div>
+        {/* Main Content */}
+        <main className="flex-1 p-8">
+          <div className="max-w-7xl mx-auto space-y-8">
+            {/* Upload + Tabs */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+              {/* Upload Card */}
+                  <ImageUploader
+                    uploadedFile={uploadedFile}
+                    filePreview={filePreview}
+                    analyzing={analyzing}
+                    handleFileUpload={handleFileUpload}
+                    handleRemoveFile={handleRemoveFile}
+                    handleAnalyzeImage={handleAnalyzeImage}
+                    fileInputRef={fileInputRef}
+                  />
+              {/* Tabs Card */}
+              <Card className="lg:col-span-2 shadow-md border border-slate-200">
+                <CardContent className="p-6">
+                  <Tabs defaultValue="diagnostic-tests" className="w-full">
+                    <TabsList className="mb-6 bg-slate-100 p-1 rounded-lg">
+                      <TabsTrigger value="diagnostic-tests">Diagnostic Tests</TabsTrigger>
+                      <TabsTrigger value="test-results">Test Results</TabsTrigger>
+                      <TabsTrigger value="recommendations">Doctor Recommendations</TabsTrigger>
+                      <TabsTrigger value="recommended-tests">Recommended Test</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="diagnostic-tests">
 
-        <div className="grid grid-cols-1 gap-6">
-  
-  {/* Image Upload Section */}
-  <ImageUploader
-    uploadedFile={uploadedFile}
-    filePreview={filePreview}
-    analyzing={analyzing}
-    handleFileUpload={handleFileUpload}
-    handleRemoveFile={handleRemoveFile}
-    handleAnalyzeImage={handleAnalyzeImage}
-    fileInputRef={fileInputRef}
-  />
-
-  {/* Test Result Section */}
-  {testResult && (
-    <TestResultCard testResult={testResult} />
+  {!activeDiagnostic && (
+    <DiagnosticButtons onSelect={setActiveDiagnostic} />
   )}
 
-  {/* Recommended Next Tests Section */}
-  {recommendedTests !== null && (
-    <RecommendedTestsCard recommendedTests={recommendedTests} />
+  {activeDiagnostic === "diabetic" && (
+    <DiabeticPage onBack={() => setActiveDiagnostic(null)} />
   )}
 
-  {/* Lab Comparison Table Section */}
-  {labComparison && labComparison.length > 0 && (
-    <LabComparisonTable labComparison={labComparison} />
+  {activeDiagnostic === "cardiac" && (
+    <CardiacPage onBack={() => setActiveDiagnostic(null)} />
   )}
 
-  {/* Diagnostic Test Buttons */}
-  {/* <DiagnosticButtons /> */}
+  {activeDiagnostic === "heart" && (
+    <HeartPage onBack={() => setActiveDiagnostic(null)} />
+  )}
 
-  {/* Doctor Recommendations Section */}
-  <DoctorRecommendations
-    doctorRecommendations={doctorRecommendations}
-    loadingRecommendations={loadingRecommendations}
-    formatDate={formatDate}
-  />
-
-  {/* Patient History Section */}
-  <PatientHistorySection
-    patientHistoryData={patientHistoryData}
-    loadingPatientHistory={loadingPatientHistory}
-    selectedPatientHistory={selectedPatientHistory}
-    loadPatientHistory={loadPatientHistory}
-    labTrendData={labTrendData}
-    numericData={numericData}
-    showCharts={showCharts}
-    setShowCharts={setShowCharts}
-    formatDate={formatDate}
-  />
-
-</div>
-      </div>
-    </div>
-  );
+</TabsContent>
+                    <TabsContent value="test-results">
+                      {testResult && (
+                        <TestResultCard testResult={testResult} />
+                      )}
+                    </TabsContent>
+                    <TabsContent value="recommendations">
+                      <DoctorRecommendations
+                        doctorRecommendations={doctorRecommendations}
+                        loadingRecommendations={loadingRecommendations}
+                        formatDate={formatDate}
+                      />
+                    </TabsContent>
+                    <TabsContent value="recommended-tests">
+                      {recommendedTests && (
+                        <RecommendedTestsCard
+                          recommendedTests={recommendedTests}
+                        />
+                      )}
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </Card>
+            </div>
+            {/* Lab Comparison */}
+            <Card className="shadow-md border border-slate-200">
+              <CardContent className="p-6">
+                 <h2 className="text-lg font-semibold text-slate-800 mb-4">
+                      Lab Test Comparison
+                 </h2>
+                {/* Lab Comparison Table Section */}
+                {labComparison && labComparison.length > 0 ? (
+                  <LabComparisonTable labComparison={labComparison} />
+                ) : (
+                  <>
+                    <div className="bg-white border border-slate-200 rounded-lg p-6 text-center text-slate-500">
+                      Comparison charts and analysis will appear here.
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
+  )
 }
