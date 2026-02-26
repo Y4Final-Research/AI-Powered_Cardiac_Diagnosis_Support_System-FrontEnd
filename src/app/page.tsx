@@ -34,6 +34,7 @@ export default function HomePage() {
       color: 'from-amber-500 to-orange-500',
       bgColor: 'from-amber-50 to-orange-50',
       borderColor: 'border-amber-300/50',
+      href: '/clinical-conversation',
       features: ['Language support', 'Entity extraction', 'Clinical insights'],
     },
     {
